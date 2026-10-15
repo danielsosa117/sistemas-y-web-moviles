@@ -5,11 +5,8 @@ const formulario = document.querySelector("#formulario-producto");
 const dialogoProducto = document.querySelector("#dialogo-producto");
 const selectorCategoria = document.querySelector("#id_categoria");
 const selectorProveedor = document.querySelector("#id_proveedor");
-const tituloFormulario = document.querySelector("#titulo-formulario");
-const botonGuardar = document.querySelector("#guardar-producto");
-const botonCancelar = document.querySelector("#cancelar-edicion");
-const botonAbrir = document.querySelector("#abrir-formulario");
-const botonCerrar = document.querySelector("#cerrar-dialogo");
+const busquedaProducto = document.querySelector("#buscar-producto");
+const indicadorApi = document.querySelector("#api-indicator");
 const formatoPrecio = new Intl.NumberFormat("es-CO", {
   style: "currency",
   currency: "COP",
@@ -20,10 +17,16 @@ const formatoCantidad = new Intl.NumberFormat("es-CO", {
 });
 
 let idProductoEnEdicion = null;
+let productosDisponibles = [];
 
 function mostrarMensaje(texto, tipo = "danger") {
   mensaje.textContent = texto;
   mensaje.className = `alert alert-${tipo}`;
+}
+
+function mostrarEstadoApi(estado, texto) {
+  indicadorApi.className = `api-indicator api-indicator-${estado}`;
+  indicadorApi.lastElementChild.textContent = texto;
 }
 
 function ocultarMensaje() {
@@ -46,6 +49,7 @@ function agregarCelda(fila, texto, clase = "") {
   celda.textContent = texto;
   if (clase) celda.className = clase;
   fila.append(celda);
+  return celda;
 }
 
 function agregarBoton(fila, texto, clase, accion) {
@@ -54,8 +58,7 @@ function agregarBoton(fila, texto, clase, accion) {
   boton.textContent = texto;
   boton.className = `btn btn-sm ${clase} me-1`;
   boton.addEventListener("click", accion);
-  const celda = fila.lastElementChild;
-  celda.append(boton);
+  fila.lastElementChild.append(boton);
 }
 
 function crearFila(producto) {
@@ -66,15 +69,35 @@ function crearFila(producto) {
   agregarCelda(fila, producto.proveedor);
   agregarCelda(fila, producto.unidad);
   agregarCelda(fila, formatoPrecio.format(producto.precio_venta), "text-end");
-  agregarCelda(fila, formatoCantidad.format(producto.stock_actual), "text-end");
+
+  const celdaStock = agregarCelda(fila, "", "text-end");
+  const stock = document.createElement("span");
+  stock.textContent = formatoCantidad.format(producto.stock_actual);
+  celdaStock.append(stock);
+  if (producto.stock_actual <= producto.stock_minimo) {
+    const aviso = document.createElement("span");
+    aviso.className = "badge rounded-pill text-bg-warning-subtle text-warning-emphasis ms-2";
+    aviso.textContent = "Bajo";
+    celdaStock.append(aviso);
+  }
+
   agregarCelda(fila, formatoCantidad.format(producto.stock_minimo), "text-end");
-  agregarCelda(fila, producto.activo ? "Activo" : "Inactivo");
-  fila.lastElementChild.classList.add("pe-3");
+  const celdaEstado = agregarCelda(fila, "");
+  const estado = document.createElement("span");
+  estado.className = `badge rounded-pill ${producto.activo ? "text-bg-success-subtle text-success-emphasis" : "text-bg-secondary-subtle text-secondary-emphasis"}`;
+  estado.textContent = producto.activo ? "Activo" : "Inactivo";
+  celdaEstado.append(estado);
   fila.append(document.createElement("td"));
   agregarBoton(fila, "Editar", "btn-outline-primary", () => editarProducto(producto));
   agregarBoton(fila, "Eliminar", "btn-outline-danger", () => borrarProducto(producto));
   fila.lastElementChild.classList.add("pe-3");
   return fila;
+}
+
+function agregarOpciones(selector, opciones, propiedadId) {
+  for (const opcion of opciones) {
+    selector.append(new Option(opcion.nombre, String(opcion[propiedadId])));
+  }
 }
 
 async function cargarCatalogos() {
@@ -83,37 +106,55 @@ async function cargarCatalogos() {
   agregarOpciones(selectorProveedor, catalogos.proveedores, "id_proveedor");
 }
 
-function agregarOpciones(selector, opciones, propiedadId) {
-  for (const opcion of opciones) {
-    const elemento = document.createElement("option");
-    elemento.value = opcion[propiedadId];
-    elemento.textContent = opcion.nombre;
-    selector.append(elemento);
+function actualizarResumenProductos() {
+  document.querySelector("#kpi-productos").textContent = productosDisponibles.length;
+  document.querySelector("#kpi-activos").textContent =
+    productosDisponibles.filter((producto) => producto.activo).length;
+  document.querySelector("#kpi-stock-bajo").textContent =
+    productosDisponibles.filter(
+      (producto) => producto.activo && producto.stock_actual <= producto.stock_minimo,
+    ).length;
+}
+
+function mostrarProductosFiltrados() {
+  const termino = busquedaProducto.value.trim().toLocaleLowerCase("es");
+  const filtrados = productosDisponibles.filter((producto) =>
+    [producto.nombre, producto.categoria, producto.proveedor]
+      .some((campo) => campo.toLocaleLowerCase("es").includes(termino)),
+  );
+  listaProductos.replaceChildren();
+
+  if (filtrados.length === 0) {
+    const fila = document.createElement("tr");
+    const celda = document.createElement("td");
+    celda.colSpan = 10;
+    celda.className = "text-center text-secondary py-5";
+    celda.textContent = productosDisponibles.length
+      ? "No hay productos que coincidan con la búsqueda."
+      : "Todavía no hay productos en el catálogo.";
+    fila.append(celda);
+    listaProductos.append(fila);
+  } else {
+    listaProductos.append(...filtrados.map(crearFila));
   }
+
+  totalProductos.textContent =
+    `${filtrados.length} de ${productosDisponibles.length} productos`;
 }
 
 async function cargarProductos() {
   ocultarMensaje();
   try {
-    const productos = await solicitar("/productos");
-    listaProductos.replaceChildren();
-    if (productos.length === 0) {
-      const fila = document.createElement("tr");
-      const celda = document.createElement("td");
-      celda.colSpan = 10;
-      celda.className = "text-center text-secondary py-4";
-      celda.textContent = "No hay productos disponibles.";
-      fila.append(celda);
-      listaProductos.append(fila);
-    } else {
-      listaProductos.append(...productos.map(crearFila));
-    }
-    totalProductos.textContent =
-      `${productos.length} ${productos.length === 1 ? "producto" : "productos"}`;
+    productosDisponibles = await solicitar("/productos");
+    actualizarResumenProductos();
+    mostrarProductosFiltrados();
+    mostrarEstadoApi("ok", "API conectado");
   } catch (error) {
+    mostrarEstadoApi("error", "No se pudo conectar al API");
     mostrarMensaje(`No se pudieron cargar los productos: ${error.message}`);
-    listaProductos.replaceChildren();
-    totalProductos.textContent = "";
+    productosDisponibles = [];
+    actualizarResumenProductos();
+    mostrarProductosFiltrados();
   }
 }
 
@@ -127,31 +168,19 @@ function editarProducto(producto) {
   formulario.elements.stock_actual.value = producto.stock_actual;
   formulario.elements.stock_minimo.value = producto.stock_minimo;
   formulario.elements.activo.checked = producto.activo;
-  tituloFormulario.textContent = `Editar producto #${producto.id_producto}`;
-  botonGuardar.textContent = "Guardar cambios";
-  botonCancelar.classList.remove("d-none");
+  document.querySelector("#titulo-formulario").textContent =
+    `Editar producto #${producto.id_producto}`;
+  document.querySelector("#guardar-producto").textContent = "Guardar cambios";
+  document.querySelector("#cancelar-edicion").classList.remove("d-none");
   dialogoProducto.showModal();
-}
-
-function agregarProducto() {
-  cancelarEdicion();
-  dialogoProducto.showModal();
-}
-
-function cancelarEdicion() {
-  if (dialogoProducto.open) {
-    dialogoProducto.close();
-    return;
-  }
-  limpiarFormulario();
 }
 
 function limpiarFormulario() {
   idProductoEnEdicion = null;
   formulario.reset();
-  tituloFormulario.textContent = "Agregar producto";
-  botonGuardar.textContent = "Guardar producto";
-  botonCancelar.classList.add("d-none");
+  document.querySelector("#titulo-formulario").textContent = "Agregar producto";
+  document.querySelector("#guardar-producto").textContent = "Guardar producto";
+  document.querySelector("#cancelar-edicion").classList.add("d-none");
 }
 
 function datosDelFormulario() {
@@ -161,7 +190,6 @@ function datosDelFormulario() {
     id_proveedor: Number(formulario.elements.id_proveedor.value),
     unidad: formulario.elements.unidad.value,
     precio_venta: Number(formulario.elements.precio_venta.value),
-    stock_actual: Number(formulario.elements.stock_actual.value),
     stock_minimo: Number(formulario.elements.stock_minimo.value),
     activo: formulario.elements.activo.checked,
   };
@@ -172,7 +200,6 @@ formulario.addEventListener("submit", async (evento) => {
   ocultarMensaje();
   const esEdicion = idProductoEnEdicion !== null;
   const url = esEdicion ? `/productos/${idProductoEnEdicion}` : "/productos";
-
   try {
     await solicitar(url, {
       method: esEdicion ? "PUT" : "POST",
@@ -180,7 +207,7 @@ formulario.addEventListener("submit", async (evento) => {
       body: JSON.stringify(datosDelFormulario()),
     });
     dialogoProducto.close();
-    cancelarEdicion();
+    limpiarFormulario();
     await cargarProductos();
     mostrarMensaje(esEdicion ? "Producto actualizado." : "Producto creado.", "success");
   } catch (error) {
@@ -192,11 +219,9 @@ async function borrarProducto(producto) {
   if (!confirm(`¿Eliminar "${producto.nombre}"? Esta acción no se puede deshacer.`)) {
     return;
   }
-
   ocultarMensaje();
   try {
     await solicitar(`/productos/${producto.id_producto}`, { method: "DELETE" });
-    if (idProductoEnEdicion === producto.id_producto) cancelarEdicion();
     await cargarProductos();
     mostrarMensaje("Producto eliminado.", "success");
   } catch (error) {
@@ -204,16 +229,21 @@ async function borrarProducto(producto) {
   }
 }
 
-botonAbrir.addEventListener("click", agregarProducto);
-botonCerrar.addEventListener("click", cancelarEdicion);
-botonCancelar.addEventListener("click", cancelarEdicion);
+document.querySelector("#abrir-formulario").addEventListener("click", () => {
+  limpiarFormulario();
+  dialogoProducto.showModal();
+});
+document.querySelector("#cerrar-dialogo").addEventListener("click", () => dialogoProducto.close());
+document.querySelector("#cancelar-edicion").addEventListener("click", () => dialogoProducto.close());
 dialogoProducto.addEventListener("close", limpiarFormulario);
+busquedaProducto.addEventListener("input", mostrarProductosFiltrados);
 
 async function iniciar() {
   try {
     await cargarCatalogos();
     await cargarProductos();
   } catch (error) {
+    mostrarEstadoApi("error", "No se pudo conectar al API");
     mostrarMensaje(`No se pudieron cargar categorías y proveedores: ${error.message}`);
   }
 }

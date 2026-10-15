@@ -12,22 +12,35 @@ from app.main import crear_app
 def test_inicio_y_archivos_estaticos(tmp_path):
     with TestClient(crear_app(tmp_path / "productos.db")) as cliente:
         respuesta = cliente.get("/")
-        javascript = cliente.get("/static/app.js")
+        pagina_productos = cliente.get("/productos-ui")
+        pagina_movimientos = cliente.get("/movimientos-ui")
+        javascript_productos = cliente.get("/static/productos/productos.js")
+        javascript_movimientos = cliente.get("/static/movimientos/movimientos.js")
 
     assert respuesta.status_code == 200
-    assert "Catálogo de productos" in respuesta.text
+    assert "Productos" in respuesta.text
     assert "lista-productos" in respuesta.text
     assert respuesta.headers["content-type"].startswith("text/html")
     assert respuesta.headers["cache-control"] == "no-cache, must-revalidate"
-    assert "/static/app.js?v=5" in respuesta.text
+    assert "/static/productos/productos.js?v=1" in respuesta.text
     assert 'id="dialogo-producto"' in respuesta.text
     assert 'id="abrir-formulario"' in respuesta.text
-    assert javascript.status_code == 200
-    assert 'solicitar("/productos")' in javascript.text
-    assert "producto.categoria" in javascript.text
-    assert "producto.stock_actual" in javascript.text
-    assert 'method: esEdicion ? "PUT" : "POST"' in javascript.text
-    assert "dialogoProducto.showModal()" in javascript.text
+    assert pagina_productos.status_code == 200
+    assert 'href="/movimientos-ui"' in pagina_productos.text
+    assert pagina_movimientos.status_code == 200
+    assert "lista-movimientos" in pagina_movimientos.text
+    assert "/static/movimientos/movimientos.js?v=1" in pagina_movimientos.text
+    assert javascript_productos.status_code == 200
+    assert 'solicitar("/productos")' in javascript_productos.text
+    assert "producto.categoria" in javascript_productos.text
+    assert "producto.stock_actual" in javascript_productos.text
+    assert 'method: esEdicion ? "PUT" : "POST"' in javascript_productos.text
+    assert "dialogoProducto.showModal()" in javascript_productos.text
+    assert javascript_movimientos.status_code == 200
+    assert 'solicitar("/movimientos")' in javascript_movimientos.text
+    assert "stock insuficiente" in javascript_movimientos.text.lower()
+    assert "Editar movimiento" in javascript_movimientos.text
+    assert 'method: esEdicion ? "PUT" : "POST"' in javascript_movimientos.text
 
 
 def test_base_nueva_crea_seis_tablas_y_catalogos_vacios(tmp_path):
@@ -39,7 +52,7 @@ def test_base_nueva_crea_seis_tablas_y_catalogos_vacios(tmp_path):
 
     assert respuesta.status_code == 200
     assert respuesta.json() == []
-    assert catalogos.json() == {"categorias": [], "proveedores": []}
+    assert catalogos.json() == {"categorias": [], "proveedores": [], "usuarios": []}
     with closing(sqlite3.connect(ruta_base_datos)) as conexion:
         tablas = {
             fila[0]
@@ -64,6 +77,7 @@ def test_script_de_datos_sql_alimenta_catalogo_y_catalogos(tmp_path):
     assert len(productos) == 8
     assert len(catalogos.json()["categorias"]) == 4
     assert len(catalogos.json()["proveedores"]) == 3
+    assert len(catalogos.json()["usuarios"]) == 2
     queso = next(producto for producto in productos if producto["nombre"] == "Queso campesino")
     assert queso == {
         "id_producto": 4,
@@ -147,7 +161,6 @@ def test_crud_crear_ver_editar_y_eliminar_producto(tmp_path):
         "id_proveedor": 1,
         "unidad": "UND",
         "precio_venta": 1000,
-        "stock_actual": 8,
         "stock_minimo": 2,
         "activo": True,
     }
@@ -169,7 +182,8 @@ def test_crud_crear_ver_editar_y_eliminar_producto(tmp_path):
     assert detalle.status_code == 200
     assert actualizado.status_code == 200
     assert actualizado.json()["nombre"] == "Producto actualizado"
-    assert actualizado.json()["stock_actual"] == 5
+    assert creado.json()["stock_actual"] == 0
+    assert actualizado.json()["stock_actual"] == 0
     assert eliminacion.status_code == 204
     assert detalle_borrado.status_code == 404
 
@@ -196,7 +210,6 @@ def test_validaciones_de_producto_y_referencias(tmp_path):
         "id_proveedor": 99,
         "unidad": "UND",
         "precio_venta": 0,
-        "stock_actual": 0,
         "stock_minimo": 0,
         "activo": True,
     }
@@ -217,3 +230,266 @@ def test_validaciones_de_producto_y_referencias(tmp_path):
     assert invalido.status_code == 422
     assert referencia_invalida.status_code == 409
     assert inexistente.status_code == 404
+
+
+def test_movimientos_actualizan_stock_y_guardan_usuario(tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        ingreso = cliente.post(
+            "/movimientos",
+            json={
+                "id_producto": 1,
+                "id_usuario": 1,
+                "tipo": "ENTRADA",
+                "cantidad": 2,
+                "observacion": "Reposición",
+            },
+        )
+        salida = cliente.post(
+            "/movimientos",
+            json={
+                "id_producto": 1,
+                "id_usuario": 2,
+                "tipo": "SALIDA",
+                "cantidad": 3.5,
+                "observacion": "Venta mostrador",
+            },
+        )
+        producto = cliente.get("/productos/1")
+        movimientos = cliente.get("/movimientos")
+
+    assert ingreso.status_code == 201
+    assert ingreso.json()["tipo"] == "ENTRADA"
+    assert ingreso.json()["usuario"] == "Administrador"
+    assert salida.status_code == 201
+    assert salida.json()["tipo"] == "SALIDA"
+    assert salida.json()["usuario"] == "Laura Vendedora"
+    assert producto.json()["stock_actual"] == 15
+    assert len(movimientos.json()) == 18
+    assert movimientos.json()[0]["id_movimiento"] == salida.json()["id_movimiento"]
+
+
+def test_salida_mayor_al_stock_es_rechazada_sin_cambiar_inventario(tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        respuesta = cliente.post(
+            "/movimientos",
+            json={
+                "id_producto": 3,
+                "id_usuario": 2,
+                "tipo": "SALIDA",
+                "cantidad": 91,
+            },
+        )
+        producto = cliente.get("/productos/3")
+        movimientos = cliente.get("/movimientos")
+
+    assert respuesta.status_code == 409
+    assert respuesta.json()["detail"] == "Stock insuficiente. Disponible: 90.0"
+    assert producto.json()["stock_actual"] == 90
+    assert len(movimientos.json()) == 16
+
+
+@pytest.mark.parametrize(
+    ("payload", "status_code", "detail"),
+    [
+        (
+            {"id_producto": 3, "id_usuario": 2, "tipo": "SALIDA", "cantidad": 0},
+            422,
+            None,
+        ),
+        (
+            {"id_producto": 3, "id_usuario": 2, "tipo": "SALIDA", "cantidad": 1.5},
+            422,
+            "La cantidad de un producto por unidades debe ser entera",
+        ),
+        (
+            {"id_producto": 3, "id_usuario": 99, "tipo": "ENTRADA", "cantidad": 1},
+            404,
+            "Usuario no encontrado o inactivo",
+        ),
+        (
+            {"id_producto": 999, "id_usuario": 2, "tipo": "ENTRADA", "cantidad": 1},
+            404,
+            "Producto no encontrado",
+        ),
+    ],
+)
+def test_validaciones_de_movimientos(tmp_path, payload, status_code, detail):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        respuesta = cliente.post("/movimientos", json=payload)
+
+    assert respuesta.status_code == status_code
+    if detail is not None:
+        assert respuesta.json()["detail"] == detail
+
+
+def test_editar_movimiento_actualiza_solo_campos_permitidos_y_stock(tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        respuesta = cliente.put(
+            "/movimientos/9",
+            json={
+                "cantidad": 2.5,
+                "id_usuario": 1,
+                "observacion": "Venta corregida",
+            },
+        )
+        producto = cliente.get("/productos/1")
+        historial = cliente.get("/movimientos")
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["tipo"] == "SALIDA"
+    assert respuesta.json()["id_producto"] == 1
+    assert respuesta.json()["cantidad"] == 2.5
+    assert respuesta.json()["usuario"] == "Administrador"
+    assert respuesta.json()["observacion"] == "Venta corregida"
+    original = next(item for item in historial.json() if item["id_movimiento"] == 9)
+    assert respuesta.json()["fecha"] == original["fecha"]
+    assert producto.json()["stock_actual"] == 17.5
+    assert original["tipo"] == "SALIDA"
+    assert original["id_producto"] == 1
+    assert original["cantidad"] == 2.5
+
+
+def test_editar_ingreso_ajusta_stock_por_diferencia(tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        respuesta = cliente.put(
+            "/movimientos/4",
+            json={
+                "cantidad": 17,
+                "id_usuario": 2,
+                "observacion": "Ingreso corregido",
+            },
+        )
+        producto = cliente.get("/productos/4")
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["tipo"] == "ENTRADA"
+    assert respuesta.json()["id_producto"] == 4
+    assert respuesta.json()["cantidad"] == 17
+    assert respuesta.json()["usuario"] == "Laura Vendedora"
+    assert producto.json()["stock_actual"] == 14.75
+
+
+def test_editar_movimiento_rechaza_cambiar_producto_o_tipo(tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        respuesta = cliente.put(
+            "/movimientos/9",
+            json={
+                "cantidad": 2,
+                "id_usuario": 1,
+                "observacion": None,
+                "id_producto": 2,
+                "tipo": "ENTRADA",
+            },
+        )
+        producto = cliente.get("/productos/1")
+        historial = cliente.get("/movimientos")
+
+    assert respuesta.status_code == 422
+    assert producto.json()["stock_actual"] == 16.5
+    original = next(item for item in historial.json() if item["id_movimiento"] == 9)
+    assert original["tipo"] == "SALIDA"
+    assert original["id_producto"] == 1
+    assert original["cantidad"] == 3.5
+
+
+@pytest.mark.parametrize(
+    ("id_movimiento", "cantidad", "detail"),
+    [
+        (9, 21, "No se puede aplicar el cambio: dejaría el stock negativo"),
+        (1, 1, "No se puede aplicar el cambio: dejaría el stock negativo"),
+    ],
+)
+def test_editar_movimiento_rechaza_ajuste_que_deja_stock_negativo(
+    tmp_path,
+    id_movimiento,
+    cantidad,
+    detail,
+):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        respuesta = cliente.put(
+            f"/movimientos/{id_movimiento}",
+            json={"cantidad": cantidad, "id_usuario": 1, "observacion": "Ajuste"},
+        )
+        producto = cliente.get("/productos/1")
+        historial = cliente.get("/movimientos")
+
+    assert respuesta.status_code == 409
+    assert respuesta.json()["detail"] == detail
+    assert producto.json()["stock_actual"] == 16.5
+    original = next(
+        item for item in historial.json() if item["id_movimiento"] == id_movimiento
+    )
+    assert original["cantidad"] == (3.5 if id_movimiento == 9 else 20)
+
+
+def test_editar_movimiento_valida_usuario_unidad_y_existencia(tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        unidad_invalida = cliente.put(
+            "/movimientos/11",
+            json={"cantidad": 1.5, "id_usuario": 1, "observacion": None},
+        )
+        usuario_invalido = cliente.put(
+            "/movimientos/9",
+            json={"cantidad": 3, "id_usuario": 999, "observacion": None},
+        )
+        inexistente = cliente.put(
+            "/movimientos/9999",
+            json={"cantidad": 1, "id_usuario": 1, "observacion": None},
+        )
+        cantidad_cero = cliente.put(
+            "/movimientos/9",
+            json={"cantidad": 0, "id_usuario": 1, "observacion": None},
+        )
+
+    assert unidad_invalida.status_code == 422
+    assert usuario_invalido.status_code == 404
+    assert usuario_invalido.json()["detail"] == "Usuario no encontrado o inactivo"
+    assert inexistente.status_code == 404
+    assert inexistente.json()["detail"] == "Movimiento no encontrado"
+    assert cantidad_cero.status_code == 422
+
+
+def test_unidad_no_se_cambia_si_el_producto_tiene_movimientos(tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+    producto = {
+        "nombre": "Chorizo santarrosano",
+        "id_categoria": 1,
+        "id_proveedor": 1,
+        "unidad": "KG",
+        "precio_venta": 3800,
+        "stock_minimo": 20,
+        "activo": True,
+    }
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        respuesta = cliente.put("/productos/3", json=producto)
+        detalle = cliente.get("/productos/3")
+
+    assert respuesta.status_code == 409
+    assert "no se puede cambiar la unidad" in respuesta.json()["detail"].lower()
+    assert detalle.json()["unidad"] == "UND"

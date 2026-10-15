@@ -29,8 +29,12 @@ El catálogo actual usa las columnas que realmente define el modelo de inventari
 
 ## Operaciones de productos
 
-La página principal permite crear, listar, editar y eliminar productos. La API expone además `GET /productos/{id}`, `POST /productos`, `PUT /productos/{id}` y `DELETE /productos/{id}`. Los campos categoría y proveedor se eligen de los catálogos existentes; precio debe ser mayor que cero y stock no puede ser negativo.
+La página de productos está en `app/static/productos/index.html`, y su lógica en `productos/productos.js`. La página de movimientos está en `app/static/movimientos/index.html`, y su lógica en `movimientos/movimientos.js`. Se accede a productos desde `/` o `/productos-ui` y a movimientos desde `/movimientos-ui`. La lógica y las rutas de API también están separadas en módulos; `app/main.py` conserva la creación de la aplicación y las páginas. El stock no se edita desde el formulario del producto: los productos nuevos comienzan con cero existencias para que todo cambio posterior quede reflejado en el historial. Los campos categoría y proveedor se eligen de los catálogos existentes y el precio debe ser mayor que cero.
 
-Un producto asociado a movimientos no se puede eliminar, para conservar el historial. En ese caso la API devuelve `409 Conflict`; se puede editar para marcarlo inactivo.
+La sección de movimientos permite registrar ingresos y ventas/salidas y consultar el historial. Cada movimiento registra producto, cantidad, tipo, fecha, observación y usuario elegido de la lista. La salida solo se registra si hay stock suficiente; la comprobación, el descuento del inventario y la inserción del movimiento se realizan en una transacción. Todas las cantidades deben ser mayores que cero; las cantidades de productos `UND` deben ser enteras. Si el producto ya tiene stock o movimientos, su unidad no se puede cambiar para no reinterpretar el inventario ni el historial.
+
+Un movimiento se puede corregir desde la acción **Editar** o con `PUT /movimientos/{id}`; solo se aceptan cantidad, usuario y observación. Tipo, producto y fecha se conservan. La corrección actualiza el stock por la diferencia entre la cantidad anterior y la nueva, dentro de una transacción; si el cambio haría que el stock quedara negativo, se rechaza sin modificar el movimiento.
+
+Un producto asociado a movimientos no se puede eliminar, para conservar el historial. En ese caso la API devuelve `409 Conflict`; se puede editar para marcarlo inactivo. La selección de usuario identifica al responsable en el registro, pero no es autenticación: como la aplicación todavía no implementa inicio de sesión, no constituye una medida de control de acceso.
 
 La aplicación aún no tiene autenticación. Limita su uso a un entorno local o de confianza.

@@ -1,10 +1,12 @@
 # Catálogo de productos con FastAPI, SQLite y Docker
 
-Aplicación web de solo lectura para consultar un catálogo guardado localmente en SQLite. La página y la API no dependen de una conexión en vivo con Oracle APEX.
+Aplicación web para administrar un catálogo y registrar ingresos y salidas de inventario, guardados localmente en SQLite. La página y la API no dependen de una conexión en vivo con Oracle APEX.
 
 ## Componentes
 
 - FastAPI y Pydantic: API y validación de productos.
+- Rutas y lógica de productos y movimientos separadas de `app/main.py`.
+- Interfaz por módulo: `static/productos/` y `static/movimientos/`, con un JavaScript por página.
 - SQLite: almacenamiento local persistente con seis tablas relacionadas.
 - Bootstrap: interfaz web adaptable a móvil y escritorio.
 - Docker Compose: ejecuta la aplicación y conserva la base en `data/productos.db`.
@@ -33,7 +35,7 @@ Aplicación web de solo lectura para consultar un catálogo guardado localmente 
 
    SQLite crea automáticamente las tablas definidas en `sql/esquema.sql` dentro de `data/productos.db`.
 
-3. Abrir `http://localhost:8000` para ver el catálogo o `/docs` para la documentación interactiva.
+3. Abrir `http://localhost:8000` para ver productos, `http://localhost:8000/movimientos-ui` para movimientos o `/docs` para la documentación interactiva.
 
 ## Ejecutar con Docker
 
@@ -44,7 +46,7 @@ docker compose up --build -d
 docker compose ps
 ```
 
-La base de datos se guarda en `data/productos.db` en el proyecto y sobrevive a la recreación del contenedor. Abre `http://localhost:8000` para ver el catálogo y `http://localhost:8000/docs` para la documentación interactiva. Usa `docker compose logs -f api` para ver los registros y `docker compose down` para detener la aplicación. Las claves foráneas se validan en SQLite.
+La base de datos se guarda en `data/productos.db` en el proyecto y sobrevive a la recreación del contenedor. Abre `http://localhost:8000` para productos, `http://localhost:8000/movimientos-ui` para movimientos y `http://localhost:8000/docs` para la documentación interactiva. Usa `docker compose logs -f api` para ver los registros y `docker compose down` para detener la aplicación. Las claves foráneas se validan en SQLite.
 
 Bootstrap se carga desde jsDelivr y requiere acceso a internet desde el navegador. La API no consulta Oracle APEX.
 
@@ -60,7 +62,7 @@ Para cargar los datos de ejemplo, ejecuta una sola vez el script SQLite `sql/pro
 docker compose exec api python -m app.ejecutar_sql /app/sql/productos.sql
 ```
 
-El script se ejecuta contra `data/productos.db`. Si quieres cargar tu inventario real, edita sus sentencias `INSERT` antes de ejecutarlo. La tabla web muestra productos activos e inactivos, incluyendo categoría, proveedor, unidad, precio de venta y stock. Consulta [`docs/sqlite.md`](docs/sqlite.md) para más detalles.
+El script se ejecuta contra `data/productos.db`. Si quieres cargar tu inventario real, edita sus sentencias `INSERT` antes de ejecutarlo. La tabla web muestra productos activos e inactivos, incluyendo categoría, proveedor, unidad, precio de venta y stock. El stock nuevo inicia en cero y solo cambia mediante un movimiento para conservar el historial. Consulta [`docs/sqlite.md`](docs/sqlite.md) para más detalles.
 
 Si ya existía una base de la versión previa y tenía productos, la aplicación no borra ni convierte automáticamente esos registros: detiene el arranque e indica que debes hacer una copia y migrarlos. La tabla antigua vacía se sustituye automáticamente por el nuevo esquema.
 
@@ -81,3 +83,6 @@ Las pruebas usan bases de datos temporales y no necesitan conexión a internet n
 | POST | `/productos` | Crear un producto |
 | PUT | `/productos/{id}` | Actualizar un producto |
 | DELETE | `/productos/{id}` | Eliminar un producto |
+| GET | `/movimientos` | Consultar el historial de movimientos |
+| POST | `/movimientos` | Registrar un ingreso o una salida |
+| PUT | `/movimientos/{id}` | Actualizar cantidad, usuario y observación |
