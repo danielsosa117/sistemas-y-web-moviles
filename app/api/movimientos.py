@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, status
 
-from app.movimientos import (
+from app.servicios.movimientos import (
     AjusteStockInvalido,
     CantidadIncompatibleConUnidad,
     MovimientoNoEncontrado,

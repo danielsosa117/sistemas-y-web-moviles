@@ -2,7 +2,7 @@ import sqlite3
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 
-from app.productos import (
+from app.servicios.productos import (
     UnidadProductoInmutable,
     actualizar_producto,
     crear_producto,

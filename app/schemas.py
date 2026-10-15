@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 
 class Producto(BaseModel):
@@ -53,3 +53,64 @@ class Movimiento(BaseModel):
     cantidad: float
     fecha: str
     observacion: str | None
+
+
+NombreCatalogo = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
+]
+
+CorreoUsuario = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=3,
+        max_length=254,
+        pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+    ),
+]
+
+
+class CategoriaEntrada(BaseModel):
+    nombre: NombreCatalogo
+
+
+class Categoria(BaseModel):
+    id_categoria: int
+    nombre: str
+
+
+class ProveedorEntrada(BaseModel):
+    nombre: NombreCatalogo
+    telefono: str | None = Field(default=None, max_length=30)
+    email: str | None = Field(default=None, max_length=254)
+
+
+class Proveedor(BaseModel):
+    id_proveedor: int
+    nombre: str
+    telefono: str | None
+    email: str | None
+
+
+class Rol(BaseModel):
+    id_rol: int
+    nombre: str
+
+
+class UsuarioActualizacion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nombre: NombreCatalogo
+    email: CorreoUsuario
+    id_rol: int = Field(gt=0)
+    activo: bool
+
+
+class Usuario(BaseModel):
+    id_usuario: int
+    nombre: str
+    email: str
+    id_rol: int
+    rol: str
+    activo: bool

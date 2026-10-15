@@ -14,8 +14,14 @@ def test_inicio_y_archivos_estaticos(tmp_path):
         respuesta = cliente.get("/")
         pagina_productos = cliente.get("/productos-ui")
         pagina_movimientos = cliente.get("/movimientos-ui")
+        pagina_categorias = cliente.get("/categorias-ui")
+        pagina_proveedores = cliente.get("/proveedores-ui")
+        pagina_usuarios = cliente.get("/usuarios-ui")
         javascript_productos = cliente.get("/static/productos/productos.js")
         javascript_movimientos = cliente.get("/static/movimientos/movimientos.js")
+        javascript_categorias = cliente.get("/static/categorias/categorias.js")
+        javascript_proveedores = cliente.get("/static/proveedores/proveedores.js")
+        javascript_usuarios = cliente.get("/static/usuarios/usuarios.js")
 
     assert respuesta.status_code == 200
     assert "Productos" in respuesta.text
@@ -30,6 +36,19 @@ def test_inicio_y_archivos_estaticos(tmp_path):
     assert pagina_movimientos.status_code == 200
     assert "lista-movimientos" in pagina_movimientos.text
     assert "/static/movimientos/movimientos.js?v=1" in pagina_movimientos.text
+    assert pagina_categorias.status_code == 200
+    assert "lista-categorias" in pagina_categorias.text
+    assert "/static/categorias/categorias.js?v=1" in pagina_categorias.text
+    assert pagina_proveedores.status_code == 200
+    assert "lista-proveedores" in pagina_proveedores.text
+    assert "/static/proveedores/proveedores.js?v=1" in pagina_proveedores.text
+    assert pagina_usuarios.status_code == 200
+    assert "Contraseñas y autenticación" in pagina_usuarios.text
+    assert "lista-usuarios" in pagina_usuarios.text
+    assert "/static/usuarios/usuarios.js?v=1" in pagina_usuarios.text
+    assert javascript_usuarios.status_code == 200
+    assert 'solicitar("/usuarios")' in javascript_usuarios.text
+    assert 'method: "PUT"' in javascript_usuarios.text
     assert javascript_productos.status_code == 200
     assert 'solicitar("/productos")' in javascript_productos.text
     assert "producto.categoria" in javascript_productos.text
@@ -41,6 +60,10 @@ def test_inicio_y_archivos_estaticos(tmp_path):
     assert "stock insuficiente" in javascript_movimientos.text.lower()
     assert "Editar movimiento" in javascript_movimientos.text
     assert 'method: esEdicion ? "PUT" : "POST"' in javascript_movimientos.text
+    assert javascript_categorias.status_code == 200
+    assert 'solicitar("/categorias")' in javascript_categorias.text
+    assert javascript_proveedores.status_code == 200
+    assert 'solicitar("/proveedores")' in javascript_proveedores.text
 
 
 def test_base_nueva_crea_seis_tablas_y_catalogos_vacios(tmp_path):
@@ -92,6 +115,216 @@ def test_script_de_datos_sql_alimenta_catalogo_y_catalogos(tmp_path):
         "stock_minimo": 6,
         "activo": True,
     }
+
+
+def test_usuarios_solo_se_consultan_y_actualizan_sin_exponer_contrasenas(tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        listado = cliente.get("/usuarios")
+        roles = cliente.get("/roles")
+        id_usuario = listado.json()[0]["id_usuario"]
+        detalle = cliente.get(f"/usuarios/{id_usuario}")
+        actualizado = cliente.put(
+            f"/usuarios/{id_usuario}",
+            json={
+                "nombre": "Nombre actualizado",
+                "email": "actualizado@example.com",
+                "id_rol": listado.json()[0]["id_rol"],
+                "activo": False,
+            },
+        )
+        no_encontrado = cliente.get("/usuarios/999")
+        creacion_no_disponible = cliente.post(
+            "/usuarios",
+            json={
+                "nombre": "Usuario nuevo",
+                "email": "nuevo@example.com",
+                "id_rol": 1,
+                "activo": True,
+            },
+        )
+
+    assert listado.status_code == 200
+    assert len(listado.json()) == 2
+    assert all("password_hash" not in usuario for usuario in listado.json())
+    assert detalle.status_code == 200
+    assert "password_hash" not in detalle.json()
+    assert roles.status_code == 200
+    assert {rol["nombre"] for rol in roles.json()} == {"ADMINISTRADOR", "VENDEDOR"}
+    assert actualizado.status_code == 200
+    assert actualizado.json()["nombre"] == "Nombre actualizado"
+    assert actualizado.json()["activo"] is False
+    assert "password_hash" not in actualizado.json()
+    assert no_encontrado.status_code == 404
+    assert creacion_no_disponible.status_code == 405
+
+    with closing(sqlite3.connect(ruta_base_datos)) as conexion:
+        hash_guardado = conexion.execute(
+            "SELECT password_hash FROM usuarios WHERE id_usuario = ?",
+            (id_usuario,),
+        ).fetchone()[0]
+    assert hash_guardado in {"HASH_ADMIN", "HASH_VENDEDOR"}
+
+
+def test_actualizacion_de_usuario_valida_correo_rol_y_campos_permitidos(tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        usuarios = cliente.get("/usuarios").json()
+        id_usuario = usuarios[0]["id_usuario"]
+        correo_duplicado = cliente.put(
+            f"/usuarios/{id_usuario}",
+            json={
+                "nombre": usuarios[0]["nombre"],
+                "email": usuarios[1]["email"],
+                "id_rol": usuarios[0]["id_rol"],
+                "activo": True,
+            },
+        )
+        rol_inexistente = cliente.put(
+            f"/usuarios/{id_usuario}",
+            json={
+                "nombre": usuarios[0]["nombre"],
+                "email": "valido@example.com",
+                "id_rol": 999,
+                "activo": True,
+            },
+        )
+        hash_no_permitido = cliente.put(
+            f"/usuarios/{id_usuario}",
+            json={
+                "nombre": usuarios[0]["nombre"],
+                "email": usuarios[0]["email"],
+                "id_rol": usuarios[0]["id_rol"],
+                "activo": True,
+                "password_hash": "nuevo-hash",
+            },
+        )
+        correo_invalido = cliente.put(
+            f"/usuarios/{id_usuario}",
+            json={
+                "nombre": usuarios[0]["nombre"],
+                "email": "no-es-correo",
+                "id_rol": usuarios[0]["id_rol"],
+                "activo": True,
+            },
+        )
+
+    assert correo_duplicado.status_code == 409
+    assert rol_inexistente.status_code == 409
+    assert hash_no_permitido.status_code == 422
+    assert correo_invalido.status_code == 422
+
+
+def test_crud_de_categorias(tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        creada = cliente.post("/categorias", json={"nombre": "  Congelados  "})
+        id_categoria = creada.json()["id_categoria"]
+        detalle = cliente.get(f"/categorias/{id_categoria}")
+        actualizada = cliente.put(
+            f"/categorias/{id_categoria}",
+            json={"nombre": "Congelados y fríos"},
+        )
+        listado = cliente.get("/categorias")
+        eliminada = cliente.delete(f"/categorias/{id_categoria}")
+        inexistente = cliente.get(f"/categorias/{id_categoria}")
+
+    assert creada.status_code == 201
+    assert creada.json()["nombre"] == "Congelados"
+    assert detalle.status_code == 200
+    assert actualizada.status_code == 200
+    assert actualizada.json()["nombre"] == "Congelados y fríos"
+    assert any(item["id_categoria"] == id_categoria for item in listado.json())
+    assert eliminada.status_code == 204
+    assert inexistente.status_code == 404
+
+
+def test_crud_de_proveedores(tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        creado = cliente.post(
+            "/proveedores",
+            json={
+                "nombre": "  Proveedor nuevo  ",
+                "telefono": "3001234567",
+                "email": "contacto@example.com",
+            },
+        )
+        id_proveedor = creado.json()["id_proveedor"]
+        detalle = cliente.get(f"/proveedores/{id_proveedor}")
+        actualizado = cliente.put(
+            f"/proveedores/{id_proveedor}",
+            json={"nombre": "Proveedor editado", "telefono": None, "email": None},
+        )
+        listado = cliente.get("/proveedores")
+        eliminado = cliente.delete(f"/proveedores/{id_proveedor}")
+        inexistente = cliente.get(f"/proveedores/{id_proveedor}")
+
+    assert creado.status_code == 201
+    assert creado.json() == {
+        "id_proveedor": id_proveedor,
+        "nombre": "Proveedor nuevo",
+        "telefono": "3001234567",
+        "email": "contacto@example.com",
+    }
+    assert detalle.status_code == 200
+    assert actualizado.status_code == 200
+    assert actualizado.json()["nombre"] == "Proveedor editado"
+    assert actualizado.json()["telefono"] is None
+    assert any(item["id_proveedor"] == id_proveedor for item in listado.json())
+    assert eliminado.status_code == 204
+    assert inexistente.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "payload", "expected_status", "crear_existente"),
+    [
+        ("/categorias", {"nombre": "   "}, 422, False),
+        ("/categorias", {"nombre": "Embutidos"}, 409, True),
+        ("/proveedores", {"nombre": "   "}, 422, False),
+    ],
+)
+def test_validacion_creacion_de_catalogos(
+    tmp_path,
+    endpoint,
+    payload,
+    expected_status,
+    crear_existente,
+):
+    ruta_base_datos = tmp_path / "productos.db"
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        if crear_existente:
+            cliente.post(endpoint, json=payload)
+        respuesta = cliente.post(endpoint, json=payload)
+
+    assert respuesta.status_code == expected_status
+    if expected_status == 409:
+        assert respuesta.json()["detail"] == "Ya existe una categoría con ese nombre"
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "mensaje"),
+    [
+        ("/categorias/1", "hay productos asociados a esta categoría"),
+        ("/proveedores/1", "hay productos asociados a este proveedor"),
+    ],
+)
+def test_no_se_eliminan_catalogos_referenciados(endpoint, mensaje, tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        respuesta = cliente.delete(endpoint)
+
+    assert respuesta.status_code == 409
+    assert mensaje in respuesta.json()["detail"]
 
 
 def test_claves_foraneas_rechazan_categoria_inexistente(tmp_path):

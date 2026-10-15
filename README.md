@@ -5,7 +5,7 @@ Aplicación web para administrar un catálogo y registrar ingresos y salidas de 
 ## Componentes
 
 - FastAPI y Pydantic: API y validación de productos.
-- Rutas y lógica de productos y movimientos separadas de `app/main.py`.
+- Rutas HTTP en `app/api/` y lógica de negocio en `app/servicios/`, separadas de `app/main.py`.
 - Interfaz por módulo: `static/productos/` y `static/movimientos/`, con un JavaScript por página.
 - SQLite: almacenamiento local persistente con seis tablas relacionadas.
 - Bootstrap: interfaz web adaptable a móvil y escritorio.
@@ -35,7 +35,7 @@ Aplicación web para administrar un catálogo y registrar ingresos y salidas de 
 
    SQLite crea automáticamente las tablas definidas en `sql/esquema.sql` dentro de `data/productos.db`.
 
-3. Abrir `http://localhost:8000` para ver productos, `http://localhost:8000/movimientos-ui` para movimientos o `/docs` para la documentación interactiva.
+3. Abrir `http://localhost:8000` para ver productos, `/movimientos-ui` para movimientos, `/categorias-ui` para categorías, `/proveedores-ui` para proveedores, `/usuarios-ui` para usuarios o `/docs` para la documentación interactiva.
 
 ## Ejecutar con Docker
 
@@ -46,7 +46,7 @@ docker compose up --build -d
 docker compose ps
 ```
 
-La base de datos se guarda en `data/productos.db` en el proyecto y sobrevive a la recreación del contenedor. Abre `http://localhost:8000` para productos, `http://localhost:8000/movimientos-ui` para movimientos y `http://localhost:8000/docs` para la documentación interactiva. Usa `docker compose logs -f api` para ver los registros y `docker compose down` para detener la aplicación. Las claves foráneas se validan en SQLite.
+La base de datos se guarda en `data/productos.db` en el proyecto y sobrevive a la recreación del contenedor. Abre `http://localhost:8000` para productos, `/movimientos-ui` para movimientos, `/categorias-ui` para categorías, `/proveedores-ui` para proveedores, `/usuarios-ui` para usuarios y `/docs` para la documentación interactiva. Usa `docker compose logs -f api` para ver los registros y `docker compose down` para detener la aplicación. Las claves foráneas se validan en SQLite.
 
 Bootstrap se carga desde jsDelivr y requiere acceso a internet desde el navegador. La API no consulta Oracle APEX.
 
@@ -86,3 +86,13 @@ Las pruebas usan bases de datos temporales y no necesitan conexión a internet n
 | GET | `/movimientos` | Consultar el historial de movimientos |
 | POST | `/movimientos` | Registrar un ingreso o una salida |
 | PUT | `/movimientos/{id}` | Actualizar cantidad, usuario y observación |
+| GET/POST | `/categorias` | Listar o crear categorías |
+| GET/PUT/DELETE | `/categorias/{id}` | Consultar, actualizar o eliminar una categoría |
+| GET/POST | `/proveedores` | Listar o crear proveedores |
+| GET/PUT/DELETE | `/proveedores/{id}` | Consultar, actualizar o eliminar un proveedor |
+| GET | `/roles` | Listar roles disponibles |
+| GET | `/usuarios` | Listar usuarios sin exponer hashes de contraseña |
+| GET | `/usuarios/{id}` | Consultar un usuario sin exponer su hash |
+| PUT | `/usuarios/{id}` | Actualizar nombre, correo, rol y estado activo |
+
+La administración de usuarios permite consultar y editar nombre, correo, rol y estado. No existe creación ni eliminación de usuarios desde este módulo. La creación de cuentas y la gestión de contraseñas quedan reservadas para la integración del módulo de autenticación; `password_hash` nunca se devuelve ni se acepta en estas rutas.

@@ -5,8 +5,11 @@ from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.database import inicializar_base_datos, obtener_ruta_base_datos
-from app.rutas.movimientos import router as movimientos_router
-from app.rutas.productos import router as productos_router
+from app.api.categorias import router as categorias_router
+from app.api.movimientos import router as movimientos_router
+from app.api.proveedores import router as proveedores_router
+from app.api.productos import router as productos_router
+from app.api.usuarios import router as usuarios_router
 
 RUTA_ESTATICOS = Path(__file__).parent / "static"
 
@@ -41,8 +44,29 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
         methods=["GET"],
         response_class=Response,
     )
+    app.add_api_route(
+        "/categorias-ui",
+        pagina_categorias,
+        methods=["GET"],
+        response_class=Response,
+    )
+    app.add_api_route(
+        "/proveedores-ui",
+        pagina_proveedores,
+        methods=["GET"],
+        response_class=Response,
+    )
+    app.add_api_route(
+        "/usuarios-ui",
+        pagina_usuarios,
+        methods=["GET"],
+        response_class=Response,
+    )
     app.include_router(productos_router)
     app.include_router(movimientos_router)
+    app.include_router(categorias_router)
+    app.include_router(proveedores_router)
+    app.include_router(usuarios_router)
     return app
 
 
@@ -63,6 +87,26 @@ def pagina_movimientos():
         content=(RUTA_ESTATICOS / "movimientos" / "index.html").read_text(
             encoding="utf-8"
         ),
+        media_type="text/html",
+        headers={"Cache-Control": "no-cache, must-revalidate"},
+    )
+
+
+def pagina_categorias():
+    return pagina_catalogo("categorias")
+
+
+def pagina_proveedores():
+    return pagina_catalogo("proveedores")
+
+
+def pagina_usuarios():
+    return pagina_catalogo("usuarios")
+
+
+def pagina_catalogo(modulo: str) -> Response:
+    return Response(
+        content=(RUTA_ESTATICOS / modulo / "index.html").read_text(encoding="utf-8"),
         media_type="text/html",
         headers={"Cache-Control": "no-cache, must-revalidate"},
     )

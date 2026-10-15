@@ -1,3 +1,5 @@
+"""Operaciones de negocio y persistencia de productos."""
+
 from contextlib import closing
 from pathlib import Path
 import sqlite3
