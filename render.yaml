@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: catalogo-productos
+    runtime: docker
+    plan: free
+    healthCheckPath: /salud
+    envVars:
+      - key: DATABASE_PATH
+        value: /app/data/productos.db
+      - key: CARGAR_DATOS_EJEMPLO
+        value: "1"

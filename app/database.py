@@ -34,3 +34,21 @@ def inicializar_base_datos(ruta: Path) -> None:
 
         script_esquema = obtener_ruta_esquema().read_text(encoding="utf-8")
         conexion.executescript(script_esquema)
+
+
+def obtener_ruta_datos_ejemplo() -> Path:
+    return Path(__file__).parent.parent / "sql" / "productos.sql"
+
+
+def cargar_datos_iniciales(ruta: Path, script: Path | None = None) -> bool:
+    """Carga los datos de ejemplo solo si la base está vacía (tabla roles sin filas).
+
+    Devuelve True si cargó los datos y False si ya había información.
+    """
+    script = script or obtener_ruta_datos_ejemplo()
+    with closing(sqlite3.connect(ruta)) as conexion, conexion:
+        conexion.execute("PRAGMA foreign_keys = ON")
+        if conexion.execute("SELECT COUNT(*) FROM roles").fetchone()[0] > 0:
+            return False
+        conexion.executescript(script.read_text(encoding="utf-8"))
+    return True
