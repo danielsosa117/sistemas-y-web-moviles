@@ -173,7 +173,7 @@ def test_usuarios_solo_se_consultan_y_actualizan_sin_exponer_contrasenas(tmp_pat
             "SELECT password_hash FROM usuarios WHERE id_usuario = ?",
             (id_usuario,),
         ).fetchone()[0]
-    assert hash_guardado in {"HASH_ADMIN", "HASH_VENDEDOR"}
+    assert hash_guardado.startswith("pbkdf2_sha256$")
 
 
 def test_actualizacion_de_usuario_valida_correo_rol_y_campos_permitidos(tmp_path):

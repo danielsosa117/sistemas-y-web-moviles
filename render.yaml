@@ -9,3 +9,9 @@ services:
         value: /app/data/productos.db
       - key: CARGAR_DATOS_EJEMPLO
         value: "1"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: VENDEDOR_PASSWORD
+        sync: false

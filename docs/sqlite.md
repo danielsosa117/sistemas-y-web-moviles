@@ -10,7 +10,7 @@ El esquema contiene seis tablas: `roles`, `usuarios`, `categorias`, `proveedores
 
 `sql/productos.sql` contiene datos de ejemplo compatibles con SQLite. Para cargar tus propios datos, edita sus `INSERT`, respetando las relaciones: roles antes de usuarios, categorías y proveedores antes de productos, y productos/usuarios antes de movimientos. El archivo actual incluye productos demostrativos; reemplázalos por los registros reales antes de ejecutar si no quieres conservarlos.
 
-Los valores `HASH_ADMIN` y `HASH_VENDEDOR` son marcadores, no contraseñas cifradas. Esta aplicación aún no implementa inicio de sesión.
+Los usuarios de ejemplo traen contraseñas con hash PBKDF2-SHA256 (`admin123` y `ventas123`, solo para demostración).
 
 Ejecuta el archivo **una sola vez**. Desde PowerShell, en la raíz del proyecto y con Docker Desktop activo:
 

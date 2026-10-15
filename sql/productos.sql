@@ -1,6 +1,7 @@
 -- Datos de ejemplo SQLite.
 -- Ejecutar una sola vez después de iniciar la aplicación.
--- Los HASH_* son marcadores de posición; esta aplicación no implementa login.
+-- Contraseñas de demostración (solo para pruebas): admin123 y ventas123.
+-- Los hashes son PBKDF2-SHA256. Cámbialas antes de publicar la aplicación.
 
 BEGIN;
 
@@ -8,8 +9,8 @@ INSERT INTO roles (id_rol, nombre) VALUES (1, 'ADMINISTRADOR');
 INSERT INTO roles (id_rol, nombre) VALUES (2, 'VENDEDOR');
 
 INSERT INTO usuarios (id_usuario, nombre, email, password_hash, id_rol) VALUES
-    (1, 'Administrador', 'admin@salsamentaria.com', 'HASH_ADMIN', 1),
-    (2, 'Laura Vendedora', 'ventas@salsamentaria.com', 'HASH_VENDEDOR', 2);
+    (1, 'Administrador', 'admin@salsamentaria.com', 'pbkdf2_sha256$600000$e4a343263b698a15c5892918210019d2$35f4e8912fd8d208fd4901d8775f4934cd64ddb783ef1e9e6bcc350490f3b934', 1),
+    (2, 'Laura Vendedora', 'ventas@salsamentaria.com', 'pbkdf2_sha256$600000$41344ec2e1faef7c3410cb49ff074e99$5589b069254e5706d36e6ec47d3e55963a20f6c439e0946552be7e6334cebf3a', 2);
 
 INSERT INTO categorias (id_categoria, nombre) VALUES
     (1, 'Embutidos'),

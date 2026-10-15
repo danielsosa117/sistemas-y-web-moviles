@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, Response
+from fastapi import Depends, FastAPI, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.database import (
@@ -10,12 +10,14 @@ from app.database import (
     inicializar_base_datos,
     obtener_ruta_base_datos,
 )
+from app.api.auth import controlar_acceso, router as auth_router
 from app.api.categorias import router as categorias_router
 from app.api.movimientos import router as movimientos_router
 from app.api.proveedores import router as proveedores_router
 from app.api.productos import router as productos_router
 from app.api.roles import router as roles_router
 from app.api.usuarios import router as usuarios_router
+from app.servicios.autenticacion import aplicar_passwords_desde_entorno
 
 RUTA_ESTATICOS = Path(__file__).parent / "static"
 
@@ -30,10 +32,12 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
         inicializar_base_datos(ruta_base_datos)
         if os.getenv("CARGAR_DATOS_EJEMPLO") == "1":
             cargar_datos_iniciales(ruta_base_datos)
+        aplicar_passwords_desde_entorno(ruta_base_datos)
         app.state.database_path = ruta_base_datos
         yield
 
     app = FastAPI(title="Catálogo de productos", version="1.0.0", lifespan=lifespan)
+    app.state.auth_activada = os.getenv("AUTH_ACTIVADA", "1") != "0"
     app.mount(
         "/static",
         StaticFiles(directory=RUTA_ESTATICOS),
@@ -77,12 +81,20 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
         methods=["GET"],
         response_class=Response,
     )
-    app.include_router(productos_router)
-    app.include_router(movimientos_router)
-    app.include_router(categorias_router)
-    app.include_router(proveedores_router)
-    app.include_router(roles_router)
-    app.include_router(usuarios_router)
+    app.add_api_route(
+        "/login-ui",
+        pagina_login,
+        methods=["GET"],
+        response_class=Response,
+    )
+    app.include_router(auth_router)
+    protegido = [Depends(controlar_acceso)]
+    app.include_router(productos_router, dependencies=protegido)
+    app.include_router(movimientos_router, dependencies=protegido)
+    app.include_router(categorias_router, dependencies=protegido)
+    app.include_router(proveedores_router, dependencies=protegido)
+    app.include_router(roles_router, dependencies=protegido)
+    app.include_router(usuarios_router, dependencies=protegido)
     return app
 
 
@@ -126,6 +138,10 @@ def pagina_usuarios():
 
 def pagina_roles():
     return pagina_catalogo("roles")
+
+
+def pagina_login():
+    return pagina_catalogo("login")
 
 
 def pagina_catalogo(modulo: str) -> Response:

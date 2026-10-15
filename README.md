@@ -50,7 +50,46 @@ La base de datos se guarda en `data/productos.db` en el proyecto y sobrevive a l
 
 Bootstrap se carga desde jsDelivr y requiere acceso a internet desde el navegador. La API no consulta Oracle APEX.
 
-La interfaz CRUD y la API no tienen autenticación; ejecútalas solo en un entorno local o de confianza.
+La interfaz y la API requieren iniciar sesión; consulta la sección «Autenticación y roles».
+
+## Autenticación y roles
+
+La API y las páginas piden iniciar sesión. Abre `/login-ui` (o cualquier página, que te redirige) y entra con uno de los usuarios de demostración:
+
+| Correo | Contraseña | Rol |
+| --- | --- | --- |
+| `admin@salsamentaria.com` | `admin123` | ADMINISTRADOR |
+| `ventas@salsamentaria.com` | `ventas123` | VENDEDOR |
+
+Son solo para pruebas locales. Antes de publicar la aplicación cámbialas con las variables `ADMIN_PASSWORD` y `VENDEDOR_PASSWORD`, o con `python -m app.establecer_password correo@ejemplo.com`.
+
+**Permisos por rol**
+
+| Acción | ADMINISTRADOR | VENDEDOR |
+| --- | --- | --- |
+| Consultar productos, movimientos, categorías y proveedores | Sí | Sí |
+| Registrar movimientos (`POST /movimientos`) | Sí | Sí |
+| Crear, editar o eliminar productos, categorías, proveedores y movimientos | Sí | No (403) |
+| Usuarios y roles (cualquier operación) | Sí | No (403) |
+
+Sin sesión válida la API responde `401`; con una sesión sin permiso, `403`. Las sesiones duran 8 horas y se firman con `SECRET_KEY`; una cuenta desactivada pierde el acceso de inmediato.
+
+**Probar en Swagger:** en `/docs` ejecuta `POST /auth/login`, copia el `access_token`, pulsa **Authorize** y pégalo.
+
+**Variables de entorno**
+
+| Variable | Uso |
+| --- | --- |
+| `SECRET_KEY` | Clave para firmar las sesiones. En Render se genera sola. |
+| `ADMIN_PASSWORD`, `VENDEDOR_PASSWORD` | Reemplazan las contraseñas de demostración al arrancar. |
+| `AUTH_ACTIVADA` | `0` desactiva la autenticación. Solo para pruebas automáticas; no la uses en un despliegue. |
+
+Si tu base local se creó antes de esta versión, sus usuarios tienen contraseñas de relleno. Actualízalas con:
+
+```bash
+python -m app.establecer_password admin@salsamentaria.com --password admin123
+python -m app.establecer_password ventas@salsamentaria.com --password ventas123
+```
 
 ## Cargar productos
 
@@ -95,7 +134,11 @@ Las pruebas usan bases de datos temporales y no necesitan conexión a internet n
 | GET | `/usuarios` | Listar usuarios sin exponer hashes de contraseña |
 | GET | `/usuarios/{id}` | Consultar un usuario sin exponer su hash |
 | PUT | `/usuarios/{id}` | Actualizar nombre, correo, rol y estado activo |
+| POST | `/auth/login` | Iniciar sesión y obtener el token |
+| GET | `/auth/yo` | Consultar el usuario de la sesión |
+| PUT | `/auth/password` | Cambiar la contraseña propia |
+| POST | `/auth/usuarios` | Crear un usuario con contraseña (solo administrador) |
 
-La administración de usuarios permite consultar y editar nombre, correo, rol y estado. No existe creación ni eliminación de usuarios desde este módulo. La creación de cuentas y la gestión de contraseñas quedan reservadas para la integración del módulo de autenticación; `password_hash` nunca se devuelve ni se acepta en estas rutas.
+La administración de usuarios permite consultar y editar nombre, correo, rol y estado. No existe creación ni eliminación de usuarios desde este módulo. La creación de cuentas y las contraseñas se gestionan con las rutas `/auth/...`; `password_hash` nunca se devuelve ni se acepta en estas rutas.
 
 Los roles tienen un módulo CRUD independiente. No se permite eliminar un rol mientras haya usuarios asignados a él.
