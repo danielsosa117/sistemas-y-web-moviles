@@ -2,20 +2,14 @@ import sqlite3
 
 from fastapi import APIRouter, HTTPException, Request
 
-from app.schemas import Rol, Usuario, UsuarioActualizacion
+from app.schemas import Usuario, UsuarioActualizacion
 from app.servicios.usuarios import (
     actualizar_usuario,
-    listar_roles,
     listar_usuarios,
     obtener_usuario,
 )
 
 router = APIRouter()
-
-
-@router.get("/roles", response_model=list[Rol])
-def obtener_roles(request: Request) -> list[Rol]:
-    return listar_roles(request.app.state.database_path)
 
 
 @router.get("/usuarios", response_model=list[Usuario])

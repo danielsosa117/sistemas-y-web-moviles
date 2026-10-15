@@ -2,7 +2,7 @@ import sqlite3
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 
-from app.servicios.catalogos import (
+from app.servicios.proveedores import (
     actualizar_proveedor,
     crear_proveedor,
     eliminar_proveedor,

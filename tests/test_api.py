@@ -17,11 +17,13 @@ def test_inicio_y_archivos_estaticos(tmp_path):
         pagina_categorias = cliente.get("/categorias-ui")
         pagina_proveedores = cliente.get("/proveedores-ui")
         pagina_usuarios = cliente.get("/usuarios-ui")
+        pagina_roles = cliente.get("/roles-ui")
         javascript_productos = cliente.get("/static/productos/productos.js")
         javascript_movimientos = cliente.get("/static/movimientos/movimientos.js")
         javascript_categorias = cliente.get("/static/categorias/categorias.js")
         javascript_proveedores = cliente.get("/static/proveedores/proveedores.js")
         javascript_usuarios = cliente.get("/static/usuarios/usuarios.js")
+        javascript_roles = cliente.get("/static/roles/roles.js")
 
     assert respuesta.status_code == 200
     assert "Productos" in respuesta.text
@@ -49,6 +51,12 @@ def test_inicio_y_archivos_estaticos(tmp_path):
     assert javascript_usuarios.status_code == 200
     assert 'solicitar("/usuarios")' in javascript_usuarios.text
     assert 'method: "PUT"' in javascript_usuarios.text
+    assert pagina_roles.status_code == 200
+    assert "lista-roles" in pagina_roles.text
+    assert "/static/roles/roles.js?v=1" in pagina_roles.text
+    assert javascript_roles.status_code == 200
+    assert 'solicitar("/roles")' in javascript_roles.text
+    assert 'method: editando ? "PUT" : "POST"' in javascript_roles.text
     assert javascript_productos.status_code == 200
     assert 'solicitar("/productos")' in javascript_productos.text
     assert "producto.categoria" in javascript_productos.text
@@ -217,6 +225,42 @@ def test_actualizacion_de_usuario_valida_correo_rol_y_campos_permitidos(tmp_path
     assert rol_inexistente.status_code == 409
     assert hash_no_permitido.status_code == 422
     assert correo_invalido.status_code == 422
+
+
+def test_crud_de_roles_y_proteccion_de_roles_asignados(tmp_path):
+    ruta_base_datos = tmp_path / "productos.db"
+    ejecutar_script(obtener_ruta_esquema().parent / "productos.sql", ruta_base_datos)
+
+    with TestClient(crear_app(ruta_base_datos)) as cliente:
+        roles_iniciales = cliente.get("/roles").json()
+        rol_creado = cliente.post("/roles", json={"nombre": "  INVENTARIO  "})
+        id_rol = rol_creado.json()["id_rol"]
+        detalle = cliente.get(f"/roles/{id_rol}")
+        actualizado = cliente.put(
+            f"/roles/{id_rol}",
+            json={"nombre": "SUPERVISOR DE INVENTARIO"},
+        )
+        listado = cliente.get("/roles")
+        eliminado = cliente.delete(f"/roles/{id_rol}")
+        inexistente = cliente.get(f"/roles/{id_rol}")
+        nombre_duplicado = cliente.post(
+            "/roles",
+            json={"nombre": roles_iniciales[0]["nombre"]},
+        )
+        rol_asignado = cliente.delete(f"/roles/{roles_iniciales[0]['id_rol']}")
+        invalidos = cliente.post("/roles", json={"nombre": "   "})
+
+    assert rol_creado.status_code == 201
+    assert rol_creado.json() == {"id_rol": id_rol, "nombre": "INVENTARIO"}
+    assert detalle.status_code == 200
+    assert actualizado.status_code == 200
+    assert actualizado.json()["nombre"] == "SUPERVISOR DE INVENTARIO"
+    assert any(rol["id_rol"] == id_rol for rol in listado.json())
+    assert eliminado.status_code == 204
+    assert inexistente.status_code == 404
+    assert nombre_duplicado.status_code == 409
+    assert rol_asignado.status_code == 409
+    assert invalidos.status_code == 422
 
 
 def test_crud_de_categorias(tmp_path):

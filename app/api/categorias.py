@@ -2,7 +2,7 @@ import sqlite3
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 
-from app.servicios.catalogos import (
+from app.servicios.categorias import (
     actualizar_categoria,
     crear_categoria,
     eliminar_categoria,

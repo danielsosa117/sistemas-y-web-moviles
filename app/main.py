@@ -9,6 +9,7 @@ from app.api.categorias import router as categorias_router
 from app.api.movimientos import router as movimientos_router
 from app.api.proveedores import router as proveedores_router
 from app.api.productos import router as productos_router
+from app.api.roles import router as roles_router
 from app.api.usuarios import router as usuarios_router
 
 RUTA_ESTATICOS = Path(__file__).parent / "static"
@@ -62,10 +63,17 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
         methods=["GET"],
         response_class=Response,
     )
+    app.add_api_route(
+        "/roles-ui",
+        pagina_roles,
+        methods=["GET"],
+        response_class=Response,
+    )
     app.include_router(productos_router)
     app.include_router(movimientos_router)
     app.include_router(categorias_router)
     app.include_router(proveedores_router)
+    app.include_router(roles_router)
     app.include_router(usuarios_router)
     return app
 
@@ -102,6 +110,10 @@ def pagina_proveedores():
 
 def pagina_usuarios():
     return pagina_catalogo("usuarios")
+
+
+def pagina_roles():
+    return pagina_catalogo("roles")
 
 
 def pagina_catalogo(modulo: str) -> Response:

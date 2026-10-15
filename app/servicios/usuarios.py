@@ -22,15 +22,6 @@ def obtener_usuario(ruta: Path, id_usuario: int) -> dict | None:
     return dict(fila) if fila else None
 
 
-def listar_roles(ruta: Path) -> list[dict]:
-    with closing(sqlite3.connect(ruta)) as conexion:
-        conexion.row_factory = sqlite3.Row
-        filas = conexion.execute(
-            "SELECT id_rol, nombre FROM roles ORDER BY nombre"
-        ).fetchall()
-    return [dict(fila) for fila in filas]
-
-
 def actualizar_usuario(
     ruta: Path,
     id_usuario: int,

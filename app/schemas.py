@@ -98,6 +98,10 @@ class Rol(BaseModel):
     nombre: str
 
 
+class RolEntrada(BaseModel):
+    nombre: NombreCatalogo
+
+
 class UsuarioActualizacion(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
