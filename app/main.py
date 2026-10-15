@@ -1,10 +1,15 @@
 from contextlib import asynccontextmanager
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
 
-from app.database import inicializar_base_datos, obtener_ruta_base_datos
+from app.database import (
+    cargar_datos_iniciales,
+    inicializar_base_datos,
+    obtener_ruta_base_datos,
+)
 from app.api.categorias import router as categorias_router
 from app.api.movimientos import router as movimientos_router
 from app.api.proveedores import router as proveedores_router
@@ -23,6 +28,8 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         inicializar_base_datos(ruta_base_datos)
+        if os.getenv("CARGAR_DATOS_EJEMPLO") == "1":
+            cargar_datos_iniciales(ruta_base_datos)
         app.state.database_path = ruta_base_datos
         yield
 
@@ -33,6 +40,7 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
         name="static",
     )
     app.add_api_route("/", inicio, methods=["GET"], response_class=Response)
+    app.add_api_route("/salud", salud, methods=["GET"])
     app.add_api_route(
         "/productos-ui",
         pagina_productos,
@@ -84,6 +92,10 @@ def inicio():
         media_type="text/html",
         headers={"Cache-Control": "no-cache, must-revalidate"},
     )
+
+
+def salud() -> dict[str, str]:
+    return {"estado": "ok"}
 
 
 def pagina_productos():
