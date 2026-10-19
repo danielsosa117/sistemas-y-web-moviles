@@ -65,21 +65,63 @@
         .forEach((enlace) => enlace.remove());
     }
 
-    const caja = document.createElement("span");
-    caja.className = "navbar-text ms-3 d-flex align-items-center gap-2";
-    const nombre = document.createElement("small");
-    nombre.textContent = `${usuario.nombre} · ${usuario.rol}`;
+    const menuAgente = document.createElement("details");
+    menuAgente.className = "user-menu";
+    const disparador = document.createElement("summary");
+    disparador.className = "user-menu-trigger";
+    disparador.setAttribute("aria-label", "Abrir menú del agente");
+    disparador.title = "Menú del agente";
+    const icono = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icono.setAttribute("viewBox", "0 0 24 24");
+    icono.setAttribute("aria-hidden", "true");
+    icono.setAttribute("fill", "none");
+    icono.setAttribute("stroke", "currentColor");
+    icono.setAttribute("stroke-width", "1.8");
+    icono.setAttribute("stroke-linecap", "round");
+    icono.setAttribute("stroke-linejoin", "round");
+    const cabeza = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    cabeza.setAttribute("cx", "12");
+    cabeza.setAttribute("cy", "8");
+    cabeza.setAttribute("r", "3.5");
+    const cuerpo = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    cuerpo.setAttribute("d", "M4.5 20c.7-3.8 3.2-6 7.5-6s6.8 2.2 7.5 6");
+    icono.append(cabeza, cuerpo);
+    disparador.append(icono);
+
+    const panel = document.createElement("div");
+    panel.className = "user-menu-panel";
+    const informacion = document.createElement("div");
+    informacion.className = "user-menu-information";
+    const titulo = document.createElement("span");
+    titulo.className = "user-menu-eyebrow";
+    titulo.textContent = "Agente conectado";
+    const nombre = document.createElement("strong");
+    nombre.className = "user-menu-name";
+    nombre.textContent = usuario.nombre;
+    const correo = document.createElement("span");
+    correo.className = "user-menu-email";
+    correo.textContent = usuario.email;
+    const rol = document.createElement("span");
+    rol.className = "user-menu-role";
+    rol.textContent = usuario.rol;
+    informacion.append(titulo, nombre, correo, rol);
+
     const cambiarPassword = document.createElement("a");
-    cambiarPassword.className = "btn btn-sm btn-outline-secondary";
+    cambiarPassword.className = "user-menu-action";
     cambiarPassword.href = RUTA_CAMBIAR_PASSWORD;
     cambiarPassword.textContent = "Cambiar contraseña";
     const boton = document.createElement("button");
     boton.type = "button";
-    boton.className = "btn btn-sm btn-outline-secondary";
+    boton.className = "user-menu-action user-menu-logout";
     boton.textContent = "Cerrar sesión";
     boton.addEventListener("click", cerrarSesion);
-    caja.append(nombre, cambiarPassword, boton);
-    menu.append(caja);
+
+    panel.append(informacion, cambiarPassword, boton);
+    menuAgente.append(disparador, panel);
+    document.addEventListener("click", (evento) => {
+      if (!menuAgente.contains(evento.target)) menuAgente.open = false;
+    });
+    menu.append(menuAgente);
   }
 
   if (!obtenerToken()) {

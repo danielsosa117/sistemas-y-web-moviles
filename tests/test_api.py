@@ -20,6 +20,7 @@ def test_inicio_y_archivos_estaticos(tmp_path):
         pagina_roles = cliente.get("/roles-ui")
         pagina_password = cliente.get("/cambiar-password-ui")
         pagina_recuperacion = cliente.get("/recuperar-password-ui")
+        javascript_layout = cliente.get("/static/layout.js")
         javascript_productos = cliente.get("/static/productos/productos.js")
         javascript_movimientos = cliente.get("/static/movimientos/movimientos.js")
         javascript_categorias = cliente.get("/static/categorias/categorias.js")
@@ -40,7 +41,21 @@ def test_inicio_y_archivos_estaticos(tmp_path):
     assert 'id="dialogo-producto"' in respuesta.text
     assert 'id="abrir-formulario"' in respuesta.text
     assert pagina_productos.status_code == 200
-    assert 'href="/movimientos-ui"' in pagina_productos.text
+    assert "/static/layout.js?v=1" in pagina_productos.text
+    assert "<nav" not in pagina_productos.text
+    for pagina_modulo in (
+        pagina_productos,
+        pagina_movimientos,
+        pagina_categorias,
+        pagina_proveedores,
+        pagina_usuarios,
+        pagina_roles,
+    ):
+        assert "/static/layout.js?v=1" in pagina_modulo.text
+        assert "<nav" not in pagina_modulo.text
+    assert javascript_layout.status_code == 200
+    assert "Gestión de inventario" in javascript_layout.text
+    assert 'ruta: "/movimientos-ui"' in javascript_layout.text
     assert pagina_movimientos.status_code == 200
     assert "lista-movimientos" in pagina_movimientos.text
     assert "/static/movimientos/movimientos.js?v=1" in pagina_movimientos.text
