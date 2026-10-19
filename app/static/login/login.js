@@ -32,7 +32,9 @@ formulario.addEventListener("submit", async (evento) => {
       throw new Error(detalle || "No se pudo iniciar sesión. Revisa los datos.");
     }
     localStorage.setItem(CLAVE_TOKEN, datos.access_token);
-    location.replace("/");
+    location.replace(
+      datos.usuario.requiere_cambio_password ? "/cambiar-password-ui" : "/",
+    );
   } catch (error) {
     mostrarMensaje(error.message);
     botonLogin.disabled = false;

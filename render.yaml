@@ -15,3 +15,5 @@ services:
         sync: false
       - key: VENDEDOR_PASSWORD
         sync: false
+      - key: AUTH_RECUPERACION_SIN_VERIFICACION
+        value: "0"

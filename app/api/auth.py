@@ -1,14 +1,17 @@
+import os
+import secrets
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.schemas import Usuario
 from app.schemas_auth import (
     CambioPassword,
     LoginEntrada,
+    RecuperacionPassword,
     RespuestaLogin,
     UsuarioCreacion,
+    UsuarioCreacionRespuesta,
     UsuarioSesion,
 )
 from app.seguridad import (
@@ -25,8 +28,8 @@ from app.servicios.autenticacion import (
     buscar_cuenta_por_email,
     crear_usuario_con_password,
     obtener_usuario_activo,
+    restablecer_password_por_email,
 )
-from app.servicios.usuarios import obtener_usuario
 
 router = APIRouter(tags=["Autenticación"])
 esquema_bearer = HTTPBearer(auto_error=False)
@@ -79,10 +82,20 @@ def controlar_acceso(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para realizar esta acción",
         )
+    if usuario["requiere_cambio_password"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Debes cambiar tu contraseña antes de continuar",
+        )
     return usuario
 
 
 def requiere_admin(usuario: dict = Depends(usuario_autenticado)) -> dict:
+    if usuario["requiere_cambio_password"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Debes cambiar tu contraseña antes de continuar",
+        )
     if usuario["rol"] != ROL_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -97,6 +110,7 @@ def _sesion(cuenta: dict) -> dict:
         "nombre": cuenta["nombre"],
         "email": cuenta["email"],
         "rol": cuenta["rol"],
+        "requiere_cambio_password": cuenta["requiere_cambio_password"],
     }
 
 
@@ -144,26 +158,51 @@ def cambiar_password(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post("/auth/recuperar-password", status_code=status.HTTP_204_NO_CONTENT)
+def recuperar_password(datos: RecuperacionPassword, request: Request) -> Response:
+    if os.getenv("AUTH_RECUPERACION_SIN_VERIFICACION") != "1":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="La recuperación sin verificación está desactivada en este entorno",
+        )
+    restablecer_password_por_email(
+        request.app.state.database_path,
+        datos.email,
+        hashear_password(datos.password_nueva),
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post(
     "/auth/usuarios",
-    response_model=Usuario,
+    response_model=UsuarioCreacionRespuesta,
     status_code=status.HTTP_201_CREATED,
 )
 def registrar_usuario(
     datos: UsuarioCreacion,
     request: Request,
-    _admin: dict = Depends(requiere_admin),
+    _: dict = Depends(requiere_admin),
 ) -> dict:
     ruta = request.app.state.database_path
+    contrasena_temporal = secrets.token_urlsafe(18)
     try:
         id_usuario = crear_usuario_con_password(
             ruta,
             {"nombre": datos.nombre, "email": datos.email, "id_rol": datos.id_rol},
-            hashear_password(datos.password),
+            hashear_password(contrasena_temporal),
         )
     except sqlite3.IntegrityError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="El correo ya está registrado o el rol no existe",
         ) from error
-    return obtener_usuario(ruta, id_usuario)
+    cuenta = obtener_usuario_activo(ruta, id_usuario)
+    if cuenta is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo recuperar el usuario recién creado",
+        )
+    return {
+        "usuario": _sesion(cuenta),
+        "contrasena_temporal": contrasena_temporal,
+    }

@@ -1,6 +1,8 @@
 const lista = document.querySelector("#lista-usuarios");
 const formulario = document.querySelector("#formulario-usuario");
 const dialogo = document.querySelector("#dialogo-usuario");
+const formularioCrear = document.querySelector("#formulario-crear-usuario");
+const dialogoCrear = document.querySelector("#dialogo-crear-usuario");
 const mensaje = document.querySelector("#mensaje");
 const indicadorApi = document.querySelector("#api-indicator");
 const busqueda = document.querySelector("#buscar-usuario");
@@ -50,7 +52,7 @@ function renderizar() {
   if (!resultado.length) {
     const fila = document.createElement("tr");
     const celda = document.createElement("td");
-    celda.colSpan = 6;
+    celda.colSpan = 7;
     celda.className = "text-center text-secondary py-5";
     celda.textContent = usuarios.length
       ? "No hay usuarios que coincidan con los filtros."
@@ -69,6 +71,10 @@ function renderizar() {
       insignia.className = `badge rounded-pill ${usuario.activo ? "text-bg-success" : "text-bg-secondary"}`;
       insignia.textContent = usuario.activo ? "Activo" : "Inactivo";
       estadoCelda.append(insignia);
+      agregarCelda(
+        fila,
+        usuario.requiere_cambio_password ? "Cambio pendiente" : "Actualizada",
+      );
       const acciones = agregarCelda(fila, "", "pe-3");
       const boton = document.createElement("button");
       boton.type = "button";
@@ -95,6 +101,14 @@ async function cargar() {
     ]);
     usuarios = usuariosCargados;
     roles = rolesCargados;
+    const selectorRolNuevo = formularioCrear.elements.id_rol;
+    selectorRolNuevo.replaceChildren();
+    for (const rol of roles) {
+      const opcion = document.createElement("option");
+      opcion.value = String(rol.id_rol);
+      opcion.textContent = rol.nombre;
+      selectorRolNuevo.append(opcion);
+    }
     renderizar();
     mostrarEstadoApi("ok", "API conectado");
     return true;
@@ -123,6 +137,36 @@ function editar(usuario) {
   dialogo.showModal();
 }
 
+document.querySelector("#abrir-formulario-crear").addEventListener("click", () => {
+  formularioCrear.reset();
+  dialogoCrear.showModal();
+});
+
+formularioCrear.addEventListener("submit", async (evento) => {
+  evento.preventDefault();
+  const datos = {
+    nombre: formularioCrear.elements.nombre.value.trim(),
+    email: formularioCrear.elements.email.value.trim(),
+    id_rol: Number(formularioCrear.elements.id_rol.value),
+  };
+  try {
+    const creado = await solicitar("/auth/usuarios", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(datos),
+    });
+    dialogoCrear.close();
+    formularioCrear.reset();
+    if (!(await cargar())) return;
+    mostrarMensaje(
+      `Usuario ${creado.usuario.email} creado. Contraseña temporal (solo se muestra ahora): ${creado.contrasena_temporal}. Entrégasela al usuario; deberá cambiarla en su primer ingreso.`,
+      "success",
+    );
+  } catch (error) {
+    mostrarMensaje(`No se pudo crear el usuario: ${error.message}`);
+  }
+});
+
 formulario.addEventListener("submit", async (evento) => {
   evento.preventDefault();
   if (idEnEdicion === null) return;
@@ -148,6 +192,8 @@ formulario.addEventListener("submit", async (evento) => {
 
 document.querySelector("#cerrar-dialogo").addEventListener("click", () => dialogo.close());
 document.querySelector("#cancelar-edicion").addEventListener("click", () => dialogo.close());
+document.querySelector("#cerrar-dialogo-crear").addEventListener("click", () => dialogoCrear.close());
+document.querySelector("#cancelar-creacion").addEventListener("click", () => dialogoCrear.close());
 busqueda.addEventListener("input", renderizar);
 filtroEstado.addEventListener("change", renderizar);
 cargar();

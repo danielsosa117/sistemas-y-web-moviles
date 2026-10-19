@@ -3,6 +3,7 @@ services:
     build: .
     environment:
       DATABASE_PATH: ${DATABASE_PATH:-/data/productos.db}
+      AUTH_RECUPERACION_SIN_VERIFICACION: ${AUTH_RECUPERACION_SIN_VERIFICACION:-0}
     ports:
       - "8000:8000"
     volumes:

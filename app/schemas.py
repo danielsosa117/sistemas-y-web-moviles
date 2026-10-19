@@ -118,3 +118,4 @@ class Usuario(BaseModel):
     id_rol: int
     rol: str
     activo: bool
+    requiere_cambio_password: bool

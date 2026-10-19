@@ -34,6 +34,18 @@ def inicializar_base_datos(ruta: Path) -> None:
 
         script_esquema = obtener_ruta_esquema().read_text(encoding="utf-8")
         conexion.executescript(script_esquema)
+        columnas_usuarios = {
+            fila["name"]
+            for fila in conexion.execute("PRAGMA table_info(usuarios)")
+        }
+        if "requiere_cambio_password" not in columnas_usuarios:
+            conexion.execute(
+                """
+                ALTER TABLE usuarios
+                ADD COLUMN requiere_cambio_password INTEGER NOT NULL DEFAULT 0
+                    CHECK (requiere_cambio_password IN (0, 1))
+                """
+            )
 
 
 def obtener_ruta_datos_ejemplo() -> Path:

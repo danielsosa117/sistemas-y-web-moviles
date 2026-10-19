@@ -52,6 +52,7 @@ def actualizar_usuario(
 def _consulta_usuarios() -> str:
     return """
         SELECT u.id_usuario, u.nombre, u.email, u.id_rol,
+               u.requiere_cambio_password,
                r.nombre AS rol, u.activo
         FROM usuarios AS u
         JOIN roles AS r ON r.id_rol = u.id_rol

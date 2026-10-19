@@ -87,6 +87,18 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
         methods=["GET"],
         response_class=Response,
     )
+    app.add_api_route(
+        "/cambiar-password-ui",
+        pagina_cambiar_password,
+        methods=["GET"],
+        response_class=Response,
+    )
+    app.add_api_route(
+        "/recuperar-password-ui",
+        pagina_recuperar_password,
+        methods=["GET"],
+        response_class=Response,
+    )
     app.include_router(auth_router)
     protegido = [Depends(controlar_acceso)]
     app.include_router(productos_router, dependencies=protegido)
@@ -142,6 +154,14 @@ def pagina_roles():
 
 def pagina_login():
     return pagina_catalogo("login")
+
+
+def pagina_cambiar_password():
+    return pagina_catalogo("password")
+
+
+def pagina_recuperar_password():
+    return pagina_catalogo("recuperar-password")
 
 
 def pagina_catalogo(modulo: str) -> Response:

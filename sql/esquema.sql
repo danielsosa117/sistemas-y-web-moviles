@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
     password_hash TEXT NOT NULL,
     id_rol INTEGER NOT NULL,
     activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
+    requiere_cambio_password INTEGER NOT NULL DEFAULT 0
+        CHECK (requiere_cambio_password IN (0, 1)),
     FOREIGN KEY (id_rol) REFERENCES roles (id_rol)
 );
 

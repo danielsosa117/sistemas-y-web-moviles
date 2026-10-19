@@ -18,12 +18,18 @@ def test_inicio_y_archivos_estaticos(tmp_path):
         pagina_proveedores = cliente.get("/proveedores-ui")
         pagina_usuarios = cliente.get("/usuarios-ui")
         pagina_roles = cliente.get("/roles-ui")
+        pagina_password = cliente.get("/cambiar-password-ui")
+        pagina_recuperacion = cliente.get("/recuperar-password-ui")
         javascript_productos = cliente.get("/static/productos/productos.js")
         javascript_movimientos = cliente.get("/static/movimientos/movimientos.js")
         javascript_categorias = cliente.get("/static/categorias/categorias.js")
         javascript_proveedores = cliente.get("/static/proveedores/proveedores.js")
         javascript_usuarios = cliente.get("/static/usuarios/usuarios.js")
         javascript_roles = cliente.get("/static/roles/roles.js")
+        javascript_password = cliente.get("/static/password/password.js")
+        javascript_recuperacion = cliente.get(
+            "/static/recuperar-password/recuperar-password.js"
+        )
 
     assert respuesta.status_code == 200
     assert "Productos" in respuesta.text
@@ -45,12 +51,22 @@ def test_inicio_y_archivos_estaticos(tmp_path):
     assert "lista-proveedores" in pagina_proveedores.text
     assert "/static/proveedores/proveedores.js?v=1" in pagina_proveedores.text
     assert pagina_usuarios.status_code == 200
-    assert "Contraseñas y autenticación" in pagina_usuarios.text
+    assert "Crear usuario" in pagina_usuarios.text
+    assert "contraseña temporal aleatoria" in pagina_usuarios.text
     assert "lista-usuarios" in pagina_usuarios.text
-    assert "/static/usuarios/usuarios.js?v=1" in pagina_usuarios.text
+    assert "/static/usuarios/usuarios.js?v=2" in pagina_usuarios.text
     assert javascript_usuarios.status_code == 200
     assert 'solicitar("/usuarios")' in javascript_usuarios.text
+    assert 'solicitar("/auth/usuarios"' in javascript_usuarios.text
     assert 'method: "PUT"' in javascript_usuarios.text
+    assert pagina_password.status_code == 200
+    assert "Confirma la nueva contraseña" in pagina_password.text
+    assert javascript_password.status_code == 200
+    assert 'fetch("/auth/password"' in javascript_password.text
+    assert pagina_recuperacion.status_code == 200
+    assert "sin verificación por correo o SMS" in pagina_recuperacion.text
+    assert javascript_recuperacion.status_code == 200
+    assert 'fetch("/auth/recuperar-password"' in javascript_recuperacion.text
     assert pagina_roles.status_code == 200
     assert "lista-roles" in pagina_roles.text
     assert "/static/roles/roles.js?v=1" in pagina_roles.text
@@ -157,6 +173,7 @@ def test_usuarios_solo_se_consultan_y_actualizan_sin_exponer_contrasenas(tmp_pat
     assert listado.status_code == 200
     assert len(listado.json()) == 2
     assert all("password_hash" not in usuario for usuario in listado.json())
+    assert all(usuario["requiere_cambio_password"] is False for usuario in listado.json())
     assert detalle.status_code == 200
     assert "password_hash" not in detalle.json()
     assert roles.status_code == 200

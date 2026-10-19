@@ -17,7 +17,7 @@ def buscar_cuenta_por_email(ruta: Path, email: str) -> dict | None:
         fila = conexion.execute(
             """
             SELECT u.id_usuario, u.nombre, u.email, u.password_hash, u.activo,
-                   r.nombre AS rol
+                   u.requiere_cambio_password, r.nombre AS rol
             FROM usuarios AS u
             JOIN roles AS r ON r.id_rol = u.id_rol
             WHERE lower(u.email) = lower(?)
@@ -33,7 +33,7 @@ def obtener_usuario_activo(ruta: Path, id_usuario: int) -> dict | None:
         fila = conexion.execute(
             """
             SELECT u.id_usuario, u.nombre, u.email, u.password_hash, u.activo,
-                   r.nombre AS rol
+                   u.requiere_cambio_password, r.nombre AS rol
             FROM usuarios AS u
             JOIN roles AS r ON r.id_rol = u.id_rol
             WHERE u.id_usuario = ? AND u.activo = 1
@@ -46,10 +46,28 @@ def obtener_usuario_activo(ruta: Path, id_usuario: int) -> dict | None:
 def actualizar_password(ruta: Path, id_usuario: int, hash_nuevo: str) -> bool:
     with closing(sqlite3.connect(ruta)) as conexion, conexion:
         cursor = conexion.execute(
-            "UPDATE usuarios SET password_hash = ? WHERE id_usuario = ?",
+            """
+            UPDATE usuarios
+            SET password_hash = ?, requiere_cambio_password = 0
+            WHERE id_usuario = ?
+            """,
             (hash_nuevo, id_usuario),
         )
         return cursor.rowcount > 0
+
+
+def restablecer_password_por_email(
+    ruta: Path, email: str, hash_nuevo: str
+) -> None:
+    with closing(sqlite3.connect(ruta)) as conexion, conexion:
+        conexion.execute(
+            """
+            UPDATE usuarios
+            SET password_hash = ?, requiere_cambio_password = 0
+            WHERE lower(email) = lower(?) AND activo = 1
+            """,
+            (hash_nuevo, email.strip()),
+        )
 
 
 def actualizar_password_por_email(ruta: Path, email: str, hash_nuevo: str) -> bool:
@@ -66,8 +84,11 @@ def crear_usuario_con_password(ruta: Path, datos: dict, hash_password: str) -> i
         conexion.execute("PRAGMA foreign_keys = ON")
         cursor = conexion.execute(
             """
-            INSERT INTO usuarios (nombre, email, password_hash, id_rol, activo)
-            VALUES (:nombre, :email, :password_hash, :id_rol, 1)
+            INSERT INTO usuarios (
+                nombre, email, password_hash, id_rol, activo,
+                requiere_cambio_password
+            )
+            VALUES (:nombre, :email, :password_hash, :id_rol, 1, 1)
             """,
             {**datos, "password_hash": hash_password},
         )
@@ -94,4 +115,5 @@ def _como_cuenta(fila: sqlite3.Row | None) -> dict | None:
         return None
     cuenta = dict(fila)
     cuenta["activo"] = bool(cuenta["activo"])
+    cuenta["requiere_cambio_password"] = bool(cuenta["requiere_cambio_password"])
     return cuenta

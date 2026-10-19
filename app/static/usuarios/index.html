@@ -9,7 +9,7 @@
       rel="stylesheet"
       integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
       crossorigin="anonymous">
-    <link rel="stylesheet" href="/static/styles.css?v=11">
+    <link rel="stylesheet" href="/static/styles.css?v=12">
   </head>
   <body>
     <nav class="navbar navbar-expand-lg navbar-inventory">
@@ -33,17 +33,21 @@
         <div>
           <p class="eyebrow mb-2">Administración</p>
           <h1 class="display-6 fw-bold mb-2">Usuarios</h1>
-          <p class="text-secondary mb-0">Consulta y actualiza los datos de las cuentas.</p>
+          <p class="text-secondary mb-0">Crea cuentas y administra los datos de acceso.</p>
         </div>
-        <div class="api-indicator api-indicator-pending" id="api-indicator" role="status" aria-live="polite">
-          <span class="api-indicator-dot" aria-hidden="true"></span><span>Conectando al API...</span>
+        <div class="d-flex align-items-center gap-3">
+          <div class="api-indicator api-indicator-pending" id="api-indicator" role="status" aria-live="polite">
+            <span class="api-indicator-dot" aria-hidden="true"></span><span>Conectando al API...</span>
+          </div>
+          <button id="abrir-formulario-crear" type="button" class="btn btn-primary">
+            Crear usuario
+          </button>
         </div>
       </header>
 
       <div class="alert alert-info border-0 shadow-sm" role="note">
-        <strong>Contraseñas y autenticación:</strong>
-        se administrarán desde el módulo de autenticación. Esta pantalla no crea usuarios,
-        no solicita ni cambia contraseñas y nunca muestra sus hashes.
+        Al crear una cuenta se genera una contraseña temporal aleatoria, visible una sola vez.
+        El usuario tendrá que cambiarla al iniciar sesión por primera vez.
       </div>
       <div id="mensaje" class="alert d-none" role="alert"></div>
 
@@ -96,11 +100,11 @@
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light">
                 <tr>
-                  <th class="ps-3">ID</th><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th class="pe-3">Acciones</th>
+                  <th class="ps-3">ID</th><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Contraseña</th><th class="pe-3">Acciones</th>
                 </tr>
               </thead>
               <tbody id="lista-usuarios">
-                <tr><td colspan="6" class="text-center text-secondary py-4">Cargando usuarios...</td></tr>
+                <tr><td colspan="7" class="text-center text-secondary py-4">Cargando usuarios...</td></tr>
               </tbody>
             </table>
           </div>
@@ -145,7 +149,42 @@
       </section>
     </dialog>
 
+    <dialog id="dialogo-crear-usuario" class="dialogo-producto" aria-labelledby="titulo-crear-usuario">
+      <section class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 mb-0" id="titulo-crear-usuario">Crear usuario</h2>
+            <button id="cerrar-dialogo-crear" type="button" class="btn-close" aria-label="Cerrar"></button>
+          </div>
+          <p class="text-secondary">
+            Se generará una contraseña temporal aleatoria. Cópiala y entrégasela al usuario;
+            no volverá a mostrarse.
+          </p>
+          <form id="formulario-crear-usuario">
+            <div class="row g-3">
+              <div class="col-12">
+                <label for="nuevo-nombre" class="form-label">Nombre</label>
+                <input id="nuevo-nombre" name="nombre" class="form-control" maxlength="100" required>
+              </div>
+              <div class="col-12">
+                <label for="nuevo-email" class="form-label">Correo</label>
+                <input id="nuevo-email" name="email" type="email" class="form-control" maxlength="254" required>
+              </div>
+              <div class="col-12">
+                <label for="nuevo-rol" class="form-label">Rol</label>
+                <select id="nuevo-rol" name="id_rol" class="form-select" required></select>
+              </div>
+              <div class="col-12 d-flex gap-2">
+                <button id="crear-usuario" type="submit" class="btn btn-primary">Crear usuario</button>
+                <button id="cancelar-creacion" type="button" class="btn btn-outline-secondary">Cancelar</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </section>
+    </dialog>
+
     <script src="/static/auth.js?v=1"></script>
-    <script src="/static/usuarios/usuarios.js?v=1"></script>
+    <script src="/static/usuarios/usuarios.js?v=2"></script>
   </body>
 </html>

@@ -63,6 +63,10 @@ La API y las páginas piden iniciar sesión. Abre `/login-ui` (o cualquier pági
 
 Son solo para pruebas locales. Antes de publicar la aplicación cámbialas con las variables `ADMIN_PASSWORD` y `VENDEDOR_PASSWORD`, o con `python -m app.establecer_password correo@ejemplo.com`.
 
+El administrador puede crear cuentas desde `/usuarios-ui`. La aplicación genera una contraseña temporal aleatoria y la muestra una sola vez después de guardar; debe entregarse al usuario de forma segura. El primer inicio de sesión obliga a cambiarla antes de usar cualquier módulo. Cada usuario puede cambiar luego su contraseña desde el menú de sesión.
+
+El enlace «Olvidé mi contraseña» permite restablecerla indicando el correo y la nueva contraseña dos veces, sin correo ni SMS. Esta recuperación no verifica la identidad y cualquiera que conozca el correo podría tomar la cuenta: está desactivada por defecto y es solo para pruebas locales. Para habilitarla explícitamente en desarrollo, configura `AUTH_RECUPERACION_SIN_VERIFICACION=1`; nunca la habilites en producción. Render la mantiene desactivada.
+
 **Permisos por rol**
 
 | Acción | ADMINISTRADOR | VENDEDOR |
@@ -83,6 +87,7 @@ Sin sesión válida la API responde `401`; con una sesión sin permiso, `403`. L
 | `SECRET_KEY` | Clave para firmar las sesiones. En Render se genera sola. |
 | `ADMIN_PASSWORD`, `VENDEDOR_PASSWORD` | Reemplazan las contraseñas de demostración al arrancar. |
 | `AUTH_ACTIVADA` | `0` desactiva la autenticación. Solo para pruebas automáticas; no la uses en un despliegue. |
+| `AUTH_RECUPERACION_SIN_VERIFICACION` | `1` habilita el restablecimiento sin verificación. Solo para pruebas locales; por defecto y en Render queda en `0`. |
 
 Si tu base local se creó antes de esta versión, sus usuarios tienen contraseñas de relleno. Actualízalas con:
 
@@ -137,8 +142,9 @@ Las pruebas usan bases de datos temporales y no necesitan conexión a internet n
 | POST | `/auth/login` | Iniciar sesión y obtener el token |
 | GET | `/auth/yo` | Consultar el usuario de la sesión |
 | PUT | `/auth/password` | Cambiar la contraseña propia |
-| POST | `/auth/usuarios` | Crear un usuario con contraseña (solo administrador) |
+| POST | `/auth/usuarios` | Crear un usuario con contraseña temporal generada (solo administrador) |
+| POST | `/auth/recuperar-password` | Restablecer contraseña sin verificación (solo si `AUTH_RECUPERACION_SIN_VERIFICACION=1`) |
 
-La administración de usuarios permite consultar y editar nombre, correo, rol y estado. No existe creación ni eliminación de usuarios desde este módulo. La creación de cuentas y las contraseñas se gestionan con las rutas `/auth/...`; `password_hash` nunca se devuelve ni se acepta en estas rutas.
+La administración de usuarios permite consultar, crear y editar nombre, correo, rol y estado. No existe eliminación de usuarios desde este módulo. La creación genera una contraseña temporal que se revela una sola vez; `password_hash` nunca se devuelve ni se acepta en estas rutas.
 
 Los roles tienen un módulo CRUD independiente. No se permite eliminar un rol mientras haya usuarios asignados a él.

@@ -5,6 +5,7 @@
 
   const CLAVE_TOKEN = "catalogo_token";
   const RUTA_LOGIN = "/login-ui";
+  const RUTA_CAMBIAR_PASSWORD = "/cambiar-password-ui";
   const ROL_ADMIN = "ADMINISTRADOR";
   const fetchOriginal = window.fetch.bind(window);
 
@@ -42,12 +43,21 @@
 
   async function mostrarSesion() {
     const menu = document.querySelector(".navbar-nav");
-    if (!menu || !obtenerToken()) return;
+    if (!obtenerToken()) return;
 
     const respuesta = await fetch("/auth/yo");
     if (!respuesta.ok) return;
     const usuario = await respuesta.json();
     document.body.dataset.rol = usuario.rol;
+
+    if (
+      usuario.requiere_cambio_password
+      && location.pathname !== RUTA_CAMBIAR_PASSWORD
+    ) {
+      location.replace(RUTA_CAMBIAR_PASSWORD);
+      return;
+    }
+    if (!menu) return;
 
     if (usuario.rol !== ROL_ADMIN) {
       menu
@@ -59,12 +69,16 @@
     caja.className = "navbar-text ms-3 d-flex align-items-center gap-2";
     const nombre = document.createElement("small");
     nombre.textContent = `${usuario.nombre} · ${usuario.rol}`;
+    const cambiarPassword = document.createElement("a");
+    cambiarPassword.className = "btn btn-sm btn-outline-secondary";
+    cambiarPassword.href = RUTA_CAMBIAR_PASSWORD;
+    cambiarPassword.textContent = "Cambiar contraseña";
     const boton = document.createElement("button");
     boton.type = "button";
     boton.className = "btn btn-sm btn-outline-secondary";
     boton.textContent = "Cerrar sesión";
     boton.addEventListener("click", cerrarSesion);
-    caja.append(nombre, boton);
+    caja.append(nombre, cambiarPassword, boton);
     menu.append(caja);
   }
 

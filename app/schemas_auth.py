@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas import CorreoUsuario, NombreCatalogo
 
@@ -13,6 +13,7 @@ class UsuarioSesion(BaseModel):
     nombre: str
     email: str
     rol: str
+    requiere_cambio_password: bool
 
 
 class RespuestaLogin(BaseModel):
@@ -27,7 +28,18 @@ class CambioPassword(BaseModel):
 
 
 class UsuarioCreacion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     nombre: NombreCatalogo
     email: CorreoUsuario
-    password: str = Field(min_length=8, max_length=128)
     id_rol: int = Field(gt=0)
+
+
+class UsuarioCreacionRespuesta(BaseModel):
+    usuario: UsuarioSesion
+    contrasena_temporal: str
+
+
+class RecuperacionPassword(BaseModel):
+    email: CorreoUsuario
+    password_nueva: str = Field(min_length=8, max_length=128)

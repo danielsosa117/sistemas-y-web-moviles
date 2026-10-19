@@ -21,6 +21,7 @@ def preparar_entorno(monkeypatch):
     monkeypatch.setenv("CARGAR_DATOS_EJEMPLO", "1")
     monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
     monkeypatch.delenv("VENDEDOR_PASSWORD", raising=False)
+    monkeypatch.delenv("AUTH_RECUPERACION_SIN_VERIFICACION", raising=False)
 
 
 @pytest.fixture
@@ -98,8 +99,15 @@ def test_paginas_y_salud_son_publicas(cliente):
     assert cliente.get("/").status_code == 200
     assert cliente.get("/productos-ui").status_code == 200
     login = cliente.get("/login-ui")
+    javascript_login = cliente.get("/static/login/login.js")
     assert login.status_code == 200
     assert 'id="formulario-login"' in login.text
+    assert "/static/login/login.js?v=2" in login.text
+    assert javascript_login.status_code == 200
+    assert (
+        'datos.usuario.requiere_cambio_password ? "/cambiar-password-ui" : "/"'
+        in javascript_login.text
+    )
 
 
 @pytest.mark.parametrize(
@@ -131,6 +139,7 @@ def test_login_correcto_devuelve_token_y_datos_del_usuario(cliente):
     datos = respuesta.json()
     assert datos["token_type"] == "bearer"
     assert datos["usuario"]["rol"] == "ADMINISTRADOR"
+    assert datos["usuario"]["requiere_cambio_password"] is False
     assert "password_hash" not in respuesta.text
 
 
@@ -157,6 +166,7 @@ def test_auth_yo_devuelve_el_usuario_de_la_sesion(cliente):
     assert admin.json()["rol"] == "ADMINISTRADOR"
     assert vendedor.json()["email"] == VENDEDOR["email"]
     assert vendedor.json()["rol"] == "VENDEDOR"
+    assert vendedor.json()["requiere_cambio_password"] is False
     assert sin_token.status_code == 401
 
 
@@ -238,16 +248,17 @@ def test_cambiar_password_propia(cliente):
     assert correcta.status_code == 204
     assert cliente.post("/auth/login", json=VENDEDOR).status_code == 401
     nuevo = {"email": VENDEDOR["email"], "password": "nueva-clave-123"}
-    assert cliente.post("/auth/login", json=nuevo).status_code == 200
+    assert cliente.post("/auth/login", json=nuevo).json()["usuario"][
+        "requiere_cambio_password"
+    ] is False
 
 
-def test_administrador_crea_usuarios_con_contrasena(cliente):
+def test_administrador_crea_usuario_con_clave_temporal_y_cambio_obligatorio(cliente):
     admin = entrar(cliente, ADMIN)
     vendedor = entrar(cliente, VENDEDOR)
     datos = {
         "nombre": "Pedro Pérez",
         "email": "pedro@example.com",
-        "password": "clave-segura-1",
         "id_rol": 2,
     }
 
@@ -262,16 +273,83 @@ def test_administrador_crea_usuarios_con_contrasena(cliente):
     sin_token = cliente.post("/auth/usuarios", json=datos)
 
     assert creado.status_code == 201
-    assert creado.json()["rol"] == "VENDEDOR"
-    assert "password" not in creado.text
+    cuenta = creado.json()["usuario"]
+    contrasena_temporal = creado.json()["contrasena_temporal"]
+    assert cuenta["email"] == "pedro@example.com"
+    assert cuenta["rol"] == "VENDEDOR"
+    assert cuenta["requiere_cambio_password"] is True
+    assert len(contrasena_temporal) >= 8
+    assert "password_hash" not in creado.text
     assert duplicado.status_code == 409
     assert rol_inexistente.status_code == 409
     assert por_vendedor.status_code == 403
     assert sin_token.status_code == 401
+    con_password_externa = cliente.post(
+        "/auth/usuarios",
+        json={**datos, "email": "otro@example.com", "password": "no-debe-aceptarse"},
+        headers=admin,
+    )
+    assert con_password_externa.status_code == 422
+
     login = cliente.post(
-        "/auth/login", json={"email": "pedro@example.com", "password": "clave-segura-1"}
+        "/auth/login",
+        json={"email": "pedro@example.com", "password": contrasena_temporal},
     )
     assert login.status_code == 200
+    assert login.json()["usuario"]["requiere_cambio_password"] is True
+    usuario_nuevo = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    acceso_bloqueado = cliente.get("/productos", headers=usuario_nuevo)
+    cambio = cliente.put(
+        "/auth/password",
+        json={
+            "password_actual": contrasena_temporal,
+            "password_nueva": "clave-inicial-nueva",
+        },
+        headers=usuario_nuevo,
+    )
+    acceso_habilitado = cliente.get("/productos", headers=usuario_nuevo)
+    nuevo_login = cliente.post(
+        "/auth/login",
+        json={"email": "pedro@example.com", "password": "clave-inicial-nueva"},
+    )
+
+    assert acceso_bloqueado.status_code == 403
+    assert "cambiar tu contraseña" in acceso_bloqueado.json()["detail"]
+    assert cambio.status_code == 204
+    assert acceso_habilitado.status_code == 200
+    assert nuevo_login.json()["usuario"]["requiere_cambio_password"] is False
+
+
+def test_recuperacion_sin_verificacion_solo_se_habilita_expresamente(
+    cliente, monkeypatch
+):
+    datos = {
+        "email": VENDEDOR["email"],
+        "password_nueva": "clave-recuperada",
+    }
+    deshabilitada = cliente.post("/auth/recuperar-password", json=datos)
+    assert deshabilitada.status_code == 403
+
+    monkeypatch.setenv("AUTH_RECUPERACION_SIN_VERIFICACION", "1")
+    recuperada = cliente.post("/auth/recuperar-password", json=datos)
+    correo_inexistente = cliente.post(
+        "/auth/recuperar-password",
+        json={"email": "inexistente@example.com", "password_nueva": "clave-recuperada"},
+    )
+    contrasena_corta = cliente.post(
+        "/auth/recuperar-password",
+        json={"email": VENDEDOR["email"], "password_nueva": "corta"},
+    )
+    login = cliente.post(
+        "/auth/login",
+        json={"email": VENDEDOR["email"], "password": "clave-recuperada"},
+    )
+
+    assert recuperada.status_code == 204
+    assert correo_inexistente.status_code == 204
+    assert contrasena_corta.status_code == 422
+    assert login.status_code == 200
+    assert login.json()["usuario"]["requiere_cambio_password"] is False
 
 
 def test_contrasenas_de_demostracion_se_reemplazan_desde_el_entorno(tmp_path, monkeypatch):

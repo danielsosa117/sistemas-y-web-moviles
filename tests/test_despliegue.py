@@ -51,3 +51,40 @@ def test_arranque_sin_variable_deja_la_base_vacia(tmp_path, monkeypatch):
         pass
 
     assert contar(ruta, "productos") == 0
+
+
+def test_migracion_agrega_cambio_password_sin_marcar_usuarios_existentes(tmp_path):
+    ruta = tmp_path / "productos.db"
+    with closing(sqlite3.connect(ruta)) as conexion:
+        conexion.executescript(
+            """
+            CREATE TABLE roles (
+                id_rol INTEGER PRIMARY KEY,
+                nombre TEXT NOT NULL UNIQUE
+            );
+            CREATE TABLE usuarios (
+                id_usuario INTEGER PRIMARY KEY,
+                nombre TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                id_rol INTEGER NOT NULL,
+                activo INTEGER NOT NULL DEFAULT 1
+            );
+            INSERT INTO roles VALUES (1, 'ADMINISTRADOR');
+            INSERT INTO usuarios VALUES
+                (1, 'Admin', 'admin@example.com', 'hash', 1, 1);
+            """
+        )
+
+    inicializar_base_datos(ruta)
+
+    with closing(sqlite3.connect(ruta)) as conexion:
+        columnas = {
+            fila[1] for fila in conexion.execute("PRAGMA table_info(usuarios)")
+        }
+        requiere_cambio = conexion.execute(
+            "SELECT requiere_cambio_password FROM usuarios WHERE id_usuario = 1"
+        ).fetchone()[0]
+
+    assert "requiere_cambio_password" in columnas
+    assert requiere_cambio == 0
