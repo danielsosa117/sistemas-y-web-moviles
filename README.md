@@ -98,6 +98,19 @@ python -m app.establecer_password admin@salsamentaria.com --password admin123
 python -m app.establecer_password ventas@salsamentaria.com --password ventas123
 ```
 
+## Reportes
+
+La opción **Reportes** del menú (`/reportes-ui`) consulta cuatro reportes consolidados. Los pueden ver ambos roles; la API de reportes es solo de lectura.
+
+| Reporte | Ruta | Filtros |
+| --- | --- | --- |
+| Inventario por categoría (productos, bajo el mínimo y valor) | `GET /reportes/inventario-por-categoria` | — |
+| Productos con stock bajo y su proveedor | `GET /reportes/stock-bajo` | — |
+| Movimientos por proveedor (entradas y salidas) | `GET /reportes/movimientos-por-proveedor` | `desde`, `hasta` (opcionales, `AAAA-MM-DD`) |
+| Movimientos por usuario | `GET /reportes/movimientos-por-usuario` | `desde`, `hasta` (opcionales, `AAAA-MM-DD`) |
+
+Las cantidades se separan por unidad (KG o UND) para no sumar kilos con unidades. Cada reporte se puede descargar en CSV desde la página (separado por punto y coma, listo para Excel). Una fecha inicial posterior a la final responde `422`.
+
 ## Cargar productos
 
 `sql/esquema.sql` define los seis objetos de la base: roles, usuarios, categorías, proveedores, productos y movimientos. Se ejecuta automáticamente al iniciar la aplicación.

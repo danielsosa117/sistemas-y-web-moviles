@@ -15,6 +15,7 @@ from app.api.categorias import router as categorias_router
 from app.api.movimientos import router as movimientos_router
 from app.api.proveedores import router as proveedores_router
 from app.api.productos import router as productos_router
+from app.api.reportes import router as reportes_router
 from app.api.roles import router as roles_router
 from app.api.usuarios import router as usuarios_router
 from app.servicios.autenticacion import aplicar_passwords_desde_entorno
@@ -64,6 +65,10 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
             {
                 "name": "Roles",
                 "description": "Administración de roles y permisos.",
+            },
+            {
+                "name": "Reportes",
+                "description": "Consultas consolidadas de inventario y movimientos.",
             },
             {
                 "name": "Autenticación",
@@ -132,6 +137,13 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
         include_in_schema=False,
     )
     app.add_api_route(
+        "/reportes-ui",
+        pagina_reportes,
+        methods=["GET"],
+        response_class=Response,
+        include_in_schema=False,
+    )
+    app.add_api_route(
         "/login-ui",
         pagina_login,
         methods=["GET"],
@@ -159,6 +171,7 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
     app.include_router(categorias_router, dependencies=protegido)
     app.include_router(proveedores_router, dependencies=protegido)
     app.include_router(roles_router, dependencies=protegido)
+    app.include_router(reportes_router, dependencies=protegido)
     app.include_router(usuarios_router, dependencies=protegido)
     return app
 
@@ -205,6 +218,10 @@ def pagina_usuarios():
 
 def pagina_roles():
     return pagina_catalogo("roles")
+
+
+def pagina_reportes():
+    return pagina_catalogo("reportes")
 
 
 def pagina_login():

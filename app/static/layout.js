@@ -7,6 +7,7 @@
     { nombre: "Movimientos", ruta: "/movimientos-ui" },
     { nombre: "Categorías", ruta: "/categorias-ui" },
     { nombre: "Proveedores", ruta: "/proveedores-ui" },
+    { nombre: "Reportes", ruta: "/reportes-ui" },
     { nombre: "Usuarios", ruta: "/usuarios-ui" },
     { nombre: "Roles", ruta: "/roles-ui" },
   ];
