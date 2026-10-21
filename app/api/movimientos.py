@@ -13,7 +13,7 @@ from app.servicios.movimientos import (
 )
 from app.schemas import Movimiento, MovimientoActualizacion, MovimientoCreacion
 
-router = APIRouter()
+router = APIRouter(tags=["Movimientos"])
 
 
 @router.get("/movimientos", response_model=list[Movimiento])

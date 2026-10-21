@@ -9,7 +9,7 @@ from app.servicios.usuarios import (
     obtener_usuario,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["Usuarios"])
 
 
 @router.get("/usuarios", response_model=list[Usuario])

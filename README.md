@@ -80,6 +80,8 @@ Sin sesión válida la API responde `401`; con una sesión sin permiso, `403`. L
 
 **Probar en Swagger:** en `/docs` ejecuta `POST /auth/login`, copia el `access_token`, pulsa **Authorize** y pégalo.
 
+La documentación de `/docs` agrupa las rutas por los módulos Productos, Movimientos, Categorías, Proveedores, Usuarios, Roles y Autenticación. Las páginas de la interfaz web no aparecen en el esquema de la API.
+
 **Variables de entorno**
 
 | Variable | Uso |

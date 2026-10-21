@@ -36,68 +36,121 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
         app.state.database_path = ruta_base_datos
         yield
 
-    app = FastAPI(title="Catálogo de productos", version="1.0.0", lifespan=lifespan)
+    app = FastAPI(
+        title="Catálogo de productos",
+        version="1.0.0",
+        lifespan=lifespan,
+        openapi_tags=[
+            {
+                "name": "Productos",
+                "description": "Consulta y administración del catálogo de productos.",
+            },
+            {
+                "name": "Movimientos",
+                "description": "Registro y consulta de ingresos y salidas de inventario.",
+            },
+            {
+                "name": "Categorías",
+                "description": "Administración de las categorías de productos.",
+            },
+            {
+                "name": "Proveedores",
+                "description": "Administración de proveedores.",
+            },
+            {
+                "name": "Usuarios",
+                "description": "Consulta y administración de cuentas de usuario.",
+            },
+            {
+                "name": "Roles",
+                "description": "Administración de roles y permisos.",
+            },
+            {
+                "name": "Autenticación",
+                "description": "Inicio de sesión, sesiones y gestión de contraseñas.",
+            },
+            {
+                "name": "Sistema",
+                "description": "Estado y disponibilidad de la API.",
+            },
+        ],
+    )
     app.state.auth_activada = os.getenv("AUTH_ACTIVADA", "1") != "0"
     app.mount(
         "/static",
         StaticFiles(directory=RUTA_ESTATICOS),
         name="static",
     )
-    app.add_api_route("/", inicio, methods=["GET"], response_class=Response)
-    app.add_api_route("/salud", salud, methods=["GET"])
+    app.add_api_route(
+        "/",
+        inicio,
+        methods=["GET"],
+        response_class=Response,
+        include_in_schema=False,
+    )
+    app.add_api_route("/salud", salud, methods=["GET"], tags=["Sistema"])
     app.add_api_route(
         "/productos-ui",
         pagina_productos,
         methods=["GET"],
         response_class=Response,
+        include_in_schema=False,
     )
     app.add_api_route(
         "/movimientos-ui",
         pagina_movimientos,
         methods=["GET"],
         response_class=Response,
+        include_in_schema=False,
     )
     app.add_api_route(
         "/categorias-ui",
         pagina_categorias,
         methods=["GET"],
         response_class=Response,
+        include_in_schema=False,
     )
     app.add_api_route(
         "/proveedores-ui",
         pagina_proveedores,
         methods=["GET"],
         response_class=Response,
+        include_in_schema=False,
     )
     app.add_api_route(
         "/usuarios-ui",
         pagina_usuarios,
         methods=["GET"],
         response_class=Response,
+        include_in_schema=False,
     )
     app.add_api_route(
         "/roles-ui",
         pagina_roles,
         methods=["GET"],
         response_class=Response,
+        include_in_schema=False,
     )
     app.add_api_route(
         "/login-ui",
         pagina_login,
         methods=["GET"],
         response_class=Response,
+        include_in_schema=False,
     )
     app.add_api_route(
         "/cambiar-password-ui",
         pagina_cambiar_password,
         methods=["GET"],
         response_class=Response,
+        include_in_schema=False,
     )
     app.add_api_route(
         "/recuperar-password-ui",
         pagina_recuperar_password,
         methods=["GET"],
         response_class=Response,
+        include_in_schema=False,
     )
     app.include_router(auth_router)
     protegido = [Depends(controlar_acceso)]

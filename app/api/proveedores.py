@@ -11,7 +11,7 @@ from app.servicios.proveedores import (
 )
 from app.schemas import Proveedor, ProveedorEntrada
 
-router = APIRouter()
+router = APIRouter(tags=["Proveedores"])
 
 
 @router.get("/proveedores", response_model=list[Proveedor])

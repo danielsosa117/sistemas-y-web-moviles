@@ -11,7 +11,7 @@ from app.servicios.roles import (
     obtener_rol,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["Roles"])
 
 
 @router.get("/roles", response_model=list[Rol])

@@ -11,7 +11,7 @@ from app.servicios.categorias import (
 )
 from app.schemas import Categoria, CategoriaEntrada
 
-router = APIRouter()
+router = APIRouter(tags=["Categorías"])
 
 
 @router.get("/categorias", response_model=list[Categoria])

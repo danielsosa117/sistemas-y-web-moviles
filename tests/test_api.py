@@ -9,6 +9,38 @@ from app.ejecutar_sql import ejecutar_script
 from app.main import crear_app
 
 
+def test_openapi_agrupa_endpoints_por_modulo(tmp_path):
+    app = crear_app(tmp_path / "productos.db")
+    esquema = app.openapi()
+    nombres_etiquetas = [etiqueta["name"] for etiqueta in esquema["tags"]]
+
+    assert nombres_etiquetas == [
+        "Productos",
+        "Movimientos",
+        "Categorías",
+        "Proveedores",
+        "Usuarios",
+        "Roles",
+        "Autenticación",
+        "Sistema",
+    ]
+    assert "/" not in esquema["paths"]
+    assert all(not ruta.endswith("-ui") for ruta in esquema["paths"])
+    assert esquema["paths"]["/productos"]["get"]["tags"] == ["Productos"]
+    assert esquema["paths"]["/movimientos"]["get"]["tags"] == ["Movimientos"]
+    assert esquema["paths"]["/categorias"]["get"]["tags"] == ["Categorías"]
+    assert esquema["paths"]["/proveedores"]["get"]["tags"] == ["Proveedores"]
+    assert esquema["paths"]["/usuarios"]["get"]["tags"] == ["Usuarios"]
+    assert esquema["paths"]["/roles"]["get"]["tags"] == ["Roles"]
+    assert esquema["paths"]["/auth/login"]["post"]["tags"] == ["Autenticación"]
+    assert esquema["paths"]["/salud"]["get"]["tags"] == ["Sistema"]
+
+    for ruta, operaciones in esquema["paths"].items():
+        for operacion in operaciones.values():
+            assert operacion["tags"]
+            assert "default" not in operacion["tags"]
+
+
 def test_inicio_y_archivos_estaticos(tmp_path):
     with TestClient(crear_app(tmp_path / "productos.db")) as cliente:
         respuesta = cliente.get("/")

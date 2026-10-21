@@ -13,7 +13,7 @@ from app.servicios.productos import (
 )
 from app.schemas import Producto, ProductoEntrada
 
-router = APIRouter()
+router = APIRouter(tags=["Productos"])
 
 
 @router.get("/productos", response_model=list[Producto])
