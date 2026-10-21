@@ -2,6 +2,7 @@
   "use strict";
 
   const paginas = [
+    { nombre: "Dashboard", ruta: "/" },
     { nombre: "Productos", ruta: "/productos-ui" },
     { nombre: "Movimientos", ruta: "/movimientos-ui" },
     { nombre: "Categorías", ruta: "/categorias-ui" },
@@ -29,7 +30,7 @@
 
   const enlaces = document.createElement("div");
   enlaces.className = "navbar-nav flex-row ms-auto";
-  const rutaActual = location.pathname === "/" ? "/productos-ui" : location.pathname;
+  const rutaActual = location.pathname;
 
   paginas.forEach(({ nombre, ruta }) => {
     const enlace = document.createElement("a");

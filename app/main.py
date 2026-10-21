@@ -165,7 +165,9 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
 
 def inicio():
     return Response(
-        content=(RUTA_ESTATICOS / "productos" / "index.html").read_text(encoding="utf-8"),
+        content=(RUTA_ESTATICOS / "dashboard" / "index.html").read_text(
+            encoding="utf-8"
+        ),
         media_type="text/html",
         headers={"Cache-Control": "no-cache, must-revalidate"},
     )
@@ -176,7 +178,7 @@ def salud() -> dict[str, str]:
 
 
 def pagina_productos():
-    return inicio()
+    return pagina_catalogo("productos")
 
 
 def pagina_movimientos():

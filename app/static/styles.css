@@ -293,6 +293,91 @@ body {
   background: linear-gradient(145deg, #fff7e8, #fff 85%);
 }
 
+.dashboard-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dashboard-category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dashboard-category-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.4rem;
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
+.dashboard-category-heading strong {
+  color: var(--muted);
+}
+
+.dashboard-category-track {
+  height: 0.45rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf2ef;
+}
+
+.dashboard-category-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #176b4b, #65a77f);
+}
+
+.dashboard-module-card {
+  display: flex;
+  min-height: 8rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 4px 16px rgb(31 55 44 / 4%);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.dashboard-module-card:hover {
+  transform: translateY(-2px);
+  border-color: #b9d8c5;
+  color: var(--green-deep);
+}
+
+.dashboard-module-card:focus-visible {
+  outline: 3px solid rgb(23 107 75 / 25%);
+  outline-offset: 2px;
+}
+
+.dashboard-module-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.dashboard-module-card strong {
+  color: var(--green-deep);
+  font-size: 1.8rem;
+  line-height: 1.15;
+}
+
+.dashboard-module-card > span:last-child {
+  margin-top: 0.2rem;
+  color: var(--green);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
 .summary-label,
 .summary-note {
   color: var(--muted);
@@ -304,6 +389,10 @@ body {
   color: var(--ink);
   font-size: 1.8rem;
   line-height: 1.15;
+}
+
+.summary-value-currency {
+  font-size: clamp(1.15rem, 2vw, 1.8rem);
 }
 
 .summary-card-primary .summary-value {

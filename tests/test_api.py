@@ -53,6 +53,7 @@ def test_inicio_y_archivos_estaticos(tmp_path):
         pagina_password = cliente.get("/cambiar-password-ui")
         pagina_recuperacion = cliente.get("/recuperar-password-ui")
         javascript_layout = cliente.get("/static/layout.js")
+        javascript_dashboard = cliente.get("/static/dashboard/dashboard.js")
         javascript_productos = cliente.get("/static/productos/productos.js")
         javascript_movimientos = cliente.get("/static/movimientos/movimientos.js")
         javascript_categorias = cliente.get("/static/categorias/categorias.js")
@@ -65,14 +66,15 @@ def test_inicio_y_archivos_estaticos(tmp_path):
         )
 
     assert respuesta.status_code == 200
-    assert "Productos" in respuesta.text
-    assert "lista-productos" in respuesta.text
+    assert "Dashboard" in respuesta.text
+    assert 'id="resumen-tablas"' in respuesta.text
+    assert 'id="lista-stock-bajo"' in respuesta.text
     assert respuesta.headers["content-type"].startswith("text/html")
     assert respuesta.headers["cache-control"] == "no-cache, must-revalidate"
-    assert "/static/productos/productos.js?v=1" in respuesta.text
-    assert 'id="dialogo-producto"' in respuesta.text
-    assert 'id="abrir-formulario"' in respuesta.text
+    assert "/static/dashboard/dashboard.js?v=1" in respuesta.text
     assert pagina_productos.status_code == 200
+    assert "lista-productos" in pagina_productos.text
+    assert "/static/productos/productos.js?v=1" in pagina_productos.text
     assert "/static/layout.js?v=1" in pagina_productos.text
     assert "<nav" not in pagina_productos.text
     for pagina_modulo in (
@@ -86,7 +88,12 @@ def test_inicio_y_archivos_estaticos(tmp_path):
         assert "/static/layout.js?v=1" in pagina_modulo.text
         assert "<nav" not in pagina_modulo.text
     assert javascript_layout.status_code == 200
+    assert javascript_dashboard.status_code == 200
+    assert 'solicitar("/productos")' in javascript_dashboard.text
+    assert 'solicitar("/movimientos")' in javascript_dashboard.text
+    assert 'solicitar("/usuarios")' in javascript_dashboard.text
     assert "Gestión de inventario" in javascript_layout.text
+    assert 'ruta: "/"' in javascript_layout.text
     assert 'ruta: "/movimientos-ui"' in javascript_layout.text
     assert pagina_movimientos.status_code == 200
     assert "lista-movimientos" in pagina_movimientos.text
