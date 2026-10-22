@@ -35,7 +35,7 @@ Aplicación web para administrar un catálogo y registrar ingresos y salidas de 
 
    SQLite crea automáticamente las tablas definidas en `sql/esquema.sql` dentro de `data/productos.db`.
 
-3. Abrir `http://localhost:8000` para ver productos, `/movimientos-ui` para movimientos, `/categorias-ui` para categorías, `/proveedores-ui` para proveedores, `/usuarios-ui` para usuarios, `/roles-ui` para roles o `/docs` para la documentación interactiva.
+3. Abrir `http://localhost:8000` para ver el dashboard, `/presentacion-ui` para presentar el proyecto en modo demo, `/productos-ui` para productos, `/movimientos-ui` para movimientos, `/categorias-ui` para categorías, `/proveedores-ui` para proveedores, `/usuarios-ui` para usuarios, `/roles-ui` para roles o `/docs` para la documentación interactiva.
 
 ## Ejecutar con Docker
 
@@ -46,7 +46,7 @@ docker compose up --build -d
 docker compose ps
 ```
 
-La base de datos se guarda en `data/productos.db` en el proyecto y sobrevive a la recreación del contenedor. Abre `http://localhost:8000` para productos, `/movimientos-ui` para movimientos, `/categorias-ui` para categorías, `/proveedores-ui` para proveedores, `/usuarios-ui` para usuarios, `/roles-ui` para roles y `/docs` para la documentación interactiva. Usa `docker compose logs -f api` para ver los registros y `docker compose down` para detener la aplicación. Las claves foráneas se validan en SQLite.
+La base de datos se guarda en `data/productos.db` en el proyecto y sobrevive a la recreación del contenedor. Abre `http://localhost:8000` para el dashboard, `/presentacion-ui` para presentar el proyecto en modo demo, `/productos-ui` para productos, `/movimientos-ui` para movimientos, `/categorias-ui` para categorías, `/proveedores-ui` para proveedores, `/usuarios-ui` para usuarios, `/roles-ui` para roles y `/docs` para la documentación interactiva. Usa `docker compose logs -f api` para ver los registros y `docker compose down` para detener la aplicación. Las claves foráneas se validan en SQLite.
 
 Bootstrap se carga desde jsDelivr y requiere acceso a internet desde el navegador. La API no consulta Oracle APEX.
 

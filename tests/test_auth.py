@@ -97,6 +97,7 @@ def test_reglas_de_permisos_por_rol(rol, metodo, ruta, esperado):
 def test_paginas_y_salud_son_publicas(cliente):
     assert cliente.get("/salud").status_code == 200
     assert cliente.get("/").status_code == 200
+    assert cliente.get("/presentacion-ui").status_code == 200
     assert cliente.get("/productos-ui").status_code == 200
     login = cliente.get("/login-ui")
     javascript_login = cliente.get("/static/login/login.js")

@@ -93,6 +93,13 @@ def crear_app(database_path: str | Path | None = None) -> FastAPI:
         response_class=Response,
         include_in_schema=False,
     )
+    app.add_api_route(
+        "/presentacion-ui",
+        pagina_presentacion,
+        methods=["GET"],
+        response_class=Response,
+        include_in_schema=False,
+    )
     app.add_api_route("/salud", salud, methods=["GET"], tags=["Sistema"])
     app.add_api_route(
         "/productos-ui",
@@ -192,6 +199,10 @@ def salud() -> dict[str, str]:
 
 def pagina_productos():
     return pagina_catalogo("productos")
+
+
+def pagina_presentacion():
+    return pagina_catalogo("presentacion")
 
 
 def pagina_movimientos():

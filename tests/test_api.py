@@ -44,6 +44,7 @@ def test_openapi_agrupa_endpoints_por_modulo(tmp_path):
 def test_inicio_y_archivos_estaticos(tmp_path):
     with TestClient(crear_app(tmp_path / "productos.db")) as cliente:
         respuesta = cliente.get("/")
+        presentacion = cliente.get("/presentacion-ui")
         pagina_productos = cliente.get("/productos-ui")
         pagina_movimientos = cliente.get("/movimientos-ui")
         pagina_categorias = cliente.get("/categorias-ui")
@@ -53,6 +54,7 @@ def test_inicio_y_archivos_estaticos(tmp_path):
         pagina_password = cliente.get("/cambiar-password-ui")
         pagina_recuperacion = cliente.get("/recuperar-password-ui")
         javascript_layout = cliente.get("/static/layout.js")
+        javascript_presentacion = cliente.get("/static/presentacion/presentacion.js")
         javascript_dashboard = cliente.get("/static/dashboard/dashboard.js")
         javascript_productos = cliente.get("/static/productos/productos.js")
         javascript_movimientos = cliente.get("/static/movimientos/movimientos.js")
@@ -72,6 +74,13 @@ def test_inicio_y_archivos_estaticos(tmp_path):
     assert respuesta.headers["content-type"].startswith("text/html")
     assert respuesta.headers["cache-control"] == "no-cache, must-revalidate"
     assert "/static/dashboard/dashboard.js?v=1" in respuesta.text
+    assert presentacion.status_code == 200
+    assert "El inventario" in presentacion.text
+    assert 'data-slide="7"' in presentacion.text
+    assert "/static/presentacion/presentacion.js?v=1" in presentacion.text
+    assert javascript_presentacion.status_code == 200
+    assert "ArrowRight" in javascript_presentacion.text
+    assert "requestFullscreen" in javascript_presentacion.text
     assert pagina_productos.status_code == 200
     assert "lista-productos" in pagina_productos.text
     assert "/static/productos/productos.js?v=1" in pagina_productos.text
